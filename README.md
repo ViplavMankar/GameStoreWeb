@@ -1,0 +1,2 @@
+# GameStoreWeb
+GameStore App frontend
