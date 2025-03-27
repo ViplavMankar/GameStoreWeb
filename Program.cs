@@ -11,8 +11,11 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
-    var port = Environment.GetEnvironmentVariable("PORT") ?? "5013";
-    app.Urls.Add($"http://0.0.0.0:{port}");
+}
+else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
+{
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
 
 app.UseHttpsRedirection();

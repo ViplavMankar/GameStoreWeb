@@ -456,3 +456,4 @@ C:/ASP.NET Core Projects/GameStoreWeb/obj/Debug/net8.0/ref/GameStoreWeb.dll
 /home/viplav/Documents/ASP NET Core Projects Repos/GameStoreWeb/obj/Debug/net8.0/GameStoreWeb.pdb
 /home/viplav/Documents/ASP NET Core Projects Repos/GameStoreWeb/obj/Debug/net8.0/GameStoreWeb.genruntimeconfig.cache
 /home/viplav/Documents/ASP NET Core Projects Repos/GameStoreWeb/obj/Debug/net8.0/ref/GameStoreWeb.dll
+/home/viplav/Documents/ASP NET Core Projects Repos/GameStoreWeb/obj/Debug/net8.0/GameStoreWeb.sourcelink.json
