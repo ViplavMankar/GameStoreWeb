@@ -10,19 +10,18 @@ namespace GameStoreWeb.Controllers
 {
     public class GameSummaryController : Controller
     {
-        private string url = "http://localhost:5113/games/";
         private HttpClient client = new HttpClient();
 
         [HttpGet]
         public IActionResult Index()
         {
             List<GameSummary> games = new List<GameSummary>();
-            HttpResponseMessage response = client.GetAsync(url).Result;
+            HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/").Result;
             if (response.IsSuccessStatusCode)
             {
                 string result = response.Content.ReadAsStringAsync().Result;
                 var data = JsonConvert.DeserializeObject<List<GameSummary>>(result);
-                if(data != null)
+                if (data != null)
                 {
                     games = data;
                 }
@@ -54,7 +53,7 @@ namespace GameStoreWeb.Controllers
             string gameSummaryJson = JsonConvert.SerializeObject(createGameModel);
 
             StringContent content = new StringContent(gameSummaryJson, Encoding.UTF8, "application/json");
-            HttpResponseMessage response = client.PostAsync(url, content).Result;
+            HttpResponseMessage response = client.PostAsync(GetBaseUrl() + "/games/", content).Result;
             if (response.IsSuccessStatusCode)
             {
                 TempData["inserted_message"] = "Game Added successfully";
@@ -70,7 +69,7 @@ namespace GameStoreWeb.Controllers
         public IActionResult Edit(int id)
         {
             GameDetails gameDetails = new GameDetails();
-            HttpResponseMessage response = client.GetAsync(url + id).Result;
+            HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/" + id).Result;
             if (response.IsSuccessStatusCode)
             {
                 string result = response.Content.ReadAsStringAsync().Result;
@@ -103,7 +102,7 @@ namespace GameStoreWeb.Controllers
             string gameSummaryJson = JsonConvert.SerializeObject(updateGameModel);
 
             StringContent content = new StringContent(gameSummaryJson, Encoding.UTF8, "application/json");
-            HttpResponseMessage response = client.PutAsync(url + Id, content).Result;
+            HttpResponseMessage response = client.PutAsync(GetBaseUrl() + "/games/" + Id, content).Result;
             if (response.IsSuccessStatusCode)
             {
                 TempData["updated_message"] = "Game Updated successfully";
@@ -120,11 +119,11 @@ namespace GameStoreWeb.Controllers
         {
             GameDetails game = new GameDetails();
             GameSummary summary = new GameSummary();
-            HttpResponseMessage response = client.GetAsync(url + Id).Result;
+            HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/" + Id).Result;
             if (response.IsSuccessStatusCode)
             {
                 string result = response.Content.ReadAsStringAsync().Result;
-                var data = JsonConvert.DeserializeObject<GameDetails>(result);                
+                var data = JsonConvert.DeserializeObject<GameDetails>(result);
                 if (data != null)
                 {
                     game = data;
@@ -146,7 +145,7 @@ namespace GameStoreWeb.Controllers
         {
             GameDetails game = new GameDetails();
             GameSummary summary = new GameSummary();
-            HttpResponseMessage response = client.GetAsync(url + Id).Result;
+            HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/" + Id).Result;
             if (response.IsSuccessStatusCode)
             {
                 string result = response.Content.ReadAsStringAsync().Result;
@@ -170,7 +169,7 @@ namespace GameStoreWeb.Controllers
         [HttpPost]
         public IActionResult Delete(GameSummary gameSummary, int Id)
         {
-            HttpResponseMessage response = client.DeleteAsync(url + Id).Result;
+            HttpResponseMessage response = client.DeleteAsync(GetBaseUrl() + "/games/" + Id).Result;
             if (response.IsSuccessStatusCode)
             {
                 TempData["delete_message"] = "Game Deleted successfully";
@@ -183,7 +182,7 @@ namespace GameStoreWeb.Controllers
         {
             GenreModel genreModel = new GenreModel();
             genreModel.Genres = new List<SelectListItem>();
-            HttpResponseMessage genreResponse = client.GetAsync("http://localhost:5113/genres").Result;
+            HttpResponseMessage genreResponse = client.GetAsync(GetBaseUrl() + "/genres").Result;
             if (genreResponse.IsSuccessStatusCode)
             {
                 string genreResult = genreResponse.Content.ReadAsStringAsync().Result;
@@ -206,6 +205,20 @@ namespace GameStoreWeb.Controllers
                 }
             }
             return genreModel;
+        }
+
+        private string GetBaseUrl()
+        {
+            string base_url = string.Empty;
+            if (Environment.GetEnvironmentVariable("RENDER") != null)
+            {
+                base_url = Environment.GetEnvironmentVariable("GAMESTORE_API_URL");
+            }
+            else
+            {
+                base_url = "http://localhost:5113";
+            }
+            return base_url;
         }
     }
 }
