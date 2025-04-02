@@ -18,7 +18,7 @@ else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
