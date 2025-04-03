@@ -13,19 +13,35 @@ namespace GameStoreWeb.Controllers
         private HttpClient client = new HttpClient();
 
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
+            int maxRetries = 3;
+            int delay = 2000; // 2 seconds
             List<GameSummary> games = new List<GameSummary>();
-            HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/").Result;
-            if (response.IsSuccessStatusCode)
+            for (int i = 0; i < maxRetries; i++)
             {
-                string result = response.Content.ReadAsStringAsync().Result;
-                var data = JsonConvert.DeserializeObject<List<GameSummary>>(result);
-                if (data != null)
+                try
                 {
-                    games = data;
+                    HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/").Result;
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string result = response.Content.ReadAsStringAsync().Result;
+                        var data = JsonConvert.DeserializeObject<List<GameSummary>>(result);
+                        if (data != null)
+                        {
+                            games = data;
+                        }
+                    }
                 }
+                catch (HttpRequestException)
+                {
+                    Console.WriteLine($"Retrying in {delay / 1000} seconds...");
+                }
+
+                await Task.Delay(delay);
+                delay *= 2; // Exponential backoff
             }
+            // RedirectToAction("Error");
             return View(games);
         }
 
