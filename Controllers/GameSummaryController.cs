@@ -15,32 +15,41 @@ namespace GameStoreWeb.Controllers
         [HttpGet]
         public async Task<IActionResult> Index()
         {
-            int maxRetries = 3;
-            int delay = 2000; // 2 seconds
+            // int maxRetries = 3;
+            // int delay = 2000; // 2 seconds
             List<GameSummary> games = new List<GameSummary>();
-            for (int i = 0; i < maxRetries; i++)
+            bool apiAwake = await WakeUpApi(client, "https://gamestore-api-l1of.onrender.com" + "/health");
+            if (!apiAwake)
             {
-                try
-                {
-                    HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/").Result;
-                    if (response.IsSuccessStatusCode)
-                    {
-                        string result = response.Content.ReadAsStringAsync().Result;
-                        var data = JsonConvert.DeserializeObject<List<GameSummary>>(result);
-                        if (data != null)
-                        {
-                            games = data;
-                        }
-                    }
-                }
-                catch (HttpRequestException)
-                {
-                    Console.WriteLine($"Retrying in {delay / 1000} seconds...");
-                }
-
-                await Task.Delay(delay);
-                delay *= 2; // Exponential backoff
+                Console.WriteLine("⚠️ API did not respond to wake-up request.");
             }
+            else
+            {
+                Console.WriteLine("✅ API is awake.");
+            }
+            // for (int i = 0; i < maxRetries; i++)
+            // {
+            //     try
+            //     {
+            HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/").Result;
+            if (response.IsSuccessStatusCode)
+            {
+                string result = response.Content.ReadAsStringAsync().Result;
+                var data = JsonConvert.DeserializeObject<List<GameSummary>>(result);
+                if (data != null)
+                {
+                    games = data;
+                }
+            }
+            //     }
+            //     catch (HttpRequestException)
+            //     {
+            //         Console.WriteLine($"Retrying in {delay / 1000} seconds...");
+            //     }
+
+            //     await Task.Delay(delay);
+            //     delay *= 2; // Exponential backoff
+            // }
             // RedirectToAction("Error");
             return View(games);
         }
@@ -235,6 +244,20 @@ namespace GameStoreWeb.Controllers
                 base_url = "http://localhost:5113";
             }
             return base_url;
+        }
+
+        private static async Task<bool> WakeUpApi(HttpClient client, string healthCheckUrl)
+        {
+            try
+            {
+                Console.WriteLine("🔄 Waking up API...");
+                HttpResponseMessage response = await client.GetAsync(healthCheckUrl);
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
