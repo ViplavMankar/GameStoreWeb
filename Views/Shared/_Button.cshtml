@@ -1,0 +1,7 @@
+﻿@model GameStoreWeb.Models.ComponentModels.ButtonViewModel;
+
+<input type="button" value=@Model.Value onclick="location.href='@Url.Action(@Model.ActionName, @Model.ControllerName)'"
+    style="background-color: #@Model.StyleProps.BackgroundColor;"
+    onmouseover="this.style.backgroundColor='#@Model.MouseEnterProps.BackgroundColor'; this.style.color='white';"
+    onmouseleave="this.style.backgroundColor='#@Model.MouseLeaveProps.BackgroundColor'; this.style.color='black';"
+    class="btn btn-border-radius-lg" />

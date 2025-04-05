@@ -1,13 +1,26 @@
-﻿@model IEnumerable<GameStoreWeb.Models.GameSummary>
+﻿@using GameStoreWeb.Models.ComponentModels;
+@model IEnumerable<GameStoreWeb.Models.GameSummary>;
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Games List";
 }
 
-<h1>Index</h1>
-
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
 <p>
-    <a asp-action="Create">Create New</a>
+    @* @await Html.Partial("_Button", new ButtonViewModel {
+    Value = "Click Me",
+        ActionName = "btn btn-primary",
+        ControllerName = "alert('Hello!')",
+        StyleProps = "btnClickMe"
+        }) *@
+    <input type="button" value="Create" onclick="location.href='@Url.Action("Create", "GameSummary")'"
+        style="background-color: #48A6A7;" onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
+        onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
+        class="btn btn-border-radius-lg" />
 </p>
 
 @{
@@ -70,9 +83,24 @@
                     @Html.DisplayFor(modelItem => item.price)
                 </td>
                 <td>
-                    @Html.ActionLink("Edit", "Edit", new { id = item.id }) |
-                    @Html.ActionLink("Details", "Details", new { id = item.id }) |
-                    @Html.ActionLink("Delete", "Delete", new { id = item.id })
+                    <input type="button" value="Edit"
+                        onclick="location.href='@Url.Action("Edit", "GameSummary", new { id = item.id })'"
+                        style="background-color: #48A6A7;"
+                        onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
+                        onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
+                        class="btn btn-border-radius-lg" /> |
+                    <input type="button" value="Details"
+                        onclick="location.href='@Url.Action("Details", "GameSummary", new { id = item.id })'"
+                        style="background-color: #48A6A7;"
+                        onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
+                        onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
+                        class="btn btn-border-radius-lg" /> |
+                    <input type="button" value="Delete"
+                        onclick="location.href='@Url.Action("Delete", "GameSummary", new { id = item.id })'"
+                        style="background-color: #F7374F;"
+                        onmouseover="this.style.backgroundColor='#88304E'; this.style.color='white';"
+                        onmouseleave="this.style.backgroundColor='#F7374F'; this.style.color='black';"
+                        class="btn btn-border-radius-lg" />
                 </td>
             </tr>
         }

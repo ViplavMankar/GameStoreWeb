@@ -19,7 +19,8 @@
             </div>
             <div class="form-group">
                 <label asp-for="@Model.GameDetails.GenreId" class="control-label"></label>
-                @Html.DropDownListFor(x => x.GameDetails.GenreId, new SelectList(Model.GenreModel.Genres, "Value", "Text"), new { @class = "date form-control" })
+                @Html.DropDownListFor(x => x.GameDetails.GenreId, new SelectList(Model.GenreModel.Genres, "Value",
+                "Text"), new { @class = "date form-control" })
                 @* <span asp-validation-for="@Model.gameSummary.name" class="text-danger"></span> *@
             </div>
             <div class="form-group">
@@ -33,16 +34,26 @@
                 <span asp-validation-for="@Model.GameDetails.ReleaseDate" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
+                @* <input type="submit" value="Save" class="btn btn-primary" /> *@
+                <input type="submit" value="Save" style="background-color: #48A6A7;"
+                    onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
+                    onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
+                    class="btn btn-border-radius-lg" />
             </div>
         </form>
     </div>
 </div>
 
 <div>
-    <a asp-action="Index">Back to List</a>
+    @* <a asp-action="Index">Back to List</a> *@
+    <input type="button" value="Back to List" onclick="location.href='@Url.Action("Index", "GameSummary")'"
+        style="background-color: #48A6A7;" onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
+        onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
+        class="btn btn-border-radius-lg" />
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }
