@@ -1,7 +1,12 @@
+using GameStoreWeb;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+// builder.Services.AddRazorPages();
+// builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddServerSideBlazor();
+
 
 if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
 {
@@ -23,6 +28,11 @@ if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
 {
     app.MapGet("/health", () => Results.Ok("API is running"));
 }
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+
 // app.UseHttpsRedirection();
 app.UseStaticFiles();
 
@@ -30,8 +40,16 @@ app.UseRouting();
 
 app.UseAuthorization();
 
+app.MapFallbackToController("Blazor", "Home");
+// app.MapRazorPages();
+
+// app.MapRazorComponents<App>()
+//    .AddInteractiveServerRenderMode();
+
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=GameSummary}/{action=Index}/{id?}");
 
+app.MapBlazorHub();
 app.Run();

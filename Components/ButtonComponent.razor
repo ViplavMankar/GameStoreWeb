@@ -1,0 +1,16 @@
+@using Microsoft.JSInterop
+@code {
+    [Parameter] public string Type { get; set; }
+    [Parameter] public string Value { get; set; }
+    [Parameter] public string OnClickUrlString { get; set; }
+    [Parameter] public string BgColor { get; set; } = "btn";
+    [Parameter] public string OnMouseEnterBgColor { get; set; }
+}
+
+@* <button id="@Id" class="@CssClass" @onclick="HandleClick">
+    @Text
+</button> *@
+
+<input type="@Type" value="@Value" onclick="@OnClickUrlString" style="background-color: #@BgColor;"
+    onmouseover="this.style.backgroundColor='#@OnMouseEnterBgColor'; this.style.color='white';"
+    onmouseleave="this.style.backgroundColor='#@BgColor'; this.style.color='black';" class="btn btn-border-radius-lg" />

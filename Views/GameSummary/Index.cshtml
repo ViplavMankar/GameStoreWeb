@@ -1,5 +1,4 @@
-﻿@using GameStoreWeb.Models.ComponentModels;
-@model IEnumerable<GameStoreWeb.Models.GameSummary>;
+﻿@model IEnumerable<GameStoreWeb.Models.GameSummary>;
 
 @{
     ViewData["Title"] = "Games List";
@@ -11,16 +10,15 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <p>
-    @* @await Html.Partial("_Button", new ButtonViewModel {
-    Value = "Click Me",
-        ActionName = "btn btn-primary",
-        ControllerName = "alert('Hello!')",
-        StyleProps = "btnClickMe"
-        }) *@
-    <input type="button" value="Create" onclick="location.href='@Url.Action("Create", "GameSummary")'"
+    <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
+        param-Type='@("button")' param-Value='@("Create")'
+        param-OnClickUrlString='@($"location.href=\'{Url.Action("Create", "GameSummary")}\';")'
+        param-BgColor='@("48A6A7")' param-OnMouseEnterBgColor='@("006A71")' />
+
+    @* <input type="button" value="Create" onclick="location.href='@Url.Action("Create", "GameSummary")'"
         style="background-color: #48A6A7;" onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
         onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
-        class="btn btn-border-radius-lg" />
+        class="btn btn-border-radius-lg" />*@
 </p>
 
 @{
@@ -83,24 +81,18 @@
                     @Html.DisplayFor(modelItem => item.price)
                 </td>
                 <td>
-                    <input type="button" value="Edit"
-                        onclick="location.href='@Url.Action("Edit", "GameSummary", new { id = item.id })'"
-                        style="background-color: #48A6A7;"
-                        onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
-                        onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
-                        class="btn btn-border-radius-lg" /> |
-                    <input type="button" value="Details"
-                        onclick="location.href='@Url.Action("Details", "GameSummary", new { id = item.id })'"
-                        style="background-color: #48A6A7;"
-                        onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
-                        onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
-                        class="btn btn-border-radius-lg" /> |
-                    <input type="button" value="Delete"
-                        onclick="location.href='@Url.Action("Delete", "GameSummary", new { id = item.id })'"
-                        style="background-color: #F7374F;"
-                        onmouseover="this.style.backgroundColor='#88304E'; this.style.color='white';"
-                        onmouseleave="this.style.backgroundColor='#F7374F'; this.style.color='black';"
-                        class="btn btn-border-radius-lg" />
+                    <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
+                        param-Type='@("button")' param-Value='@("Edit")'
+                        param-OnClickUrlString='@($"location.href=\'{Url.Action("Edit", "GameSummary", new { id = item.id })}\';")'
+                        param-BgColor='@("48A6A7")' param-OnMouseEnterBgColor='@("006A71")' /> |
+                    <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
+                        param-Type='@("button")' param-Value='@("Details")'
+                        param-OnClickUrlString='@($"location.href=\'{Url.Action("Details", "GameSummary", new { id = item.id })}\';")'
+                        param-BgColor='@("48A6A7")' param-OnMouseEnterBgColor='@("006A71")' /> |
+                    <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
+                        param-Type='@("button")' param-Value='@("Delete")'
+                        param-OnClickUrlString='@($"location.href=\'{Url.Action("Delete", "GameSummary", new { id = item.id })}\';")'
+                        param-BgColor='@("F7374F")' param-OnMouseEnterBgColor='@("88304E")' />
                 </td>
             </tr>
         }
