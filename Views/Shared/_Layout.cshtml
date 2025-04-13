@@ -12,10 +12,10 @@
     <component type="typeof(Microsoft.AspNetCore.Components.Web.HeadOutlet)" render-mode="ServerPrerendered" />
 </head>
 
-<body style="background-color: #9ACBD0;">
+<body style="background-color: #AFDDFF;">
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-gradient border-bottom box-shadow mb-3"
-            style="background-color: #006A71;">
+            style="background-color: #60B5FF;">
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-controller="GameSummary" asp-action="Index">GameStoreWeb</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
@@ -33,6 +33,11 @@
                                 asp-action="Privacy">Privacy</a>
                         </li>
                     </ul>
+                </div>
+                <div>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-link nav-link text-dark">Logout</button>
+                    </form>
                 </div>
             </div>
         </nav>
@@ -56,3 +61,6 @@
 </body>
 
 </html>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

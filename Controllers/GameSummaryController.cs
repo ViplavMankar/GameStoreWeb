@@ -5,9 +5,12 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Newtonsoft.Json;
 using System.Text;
 using System.Xml.Linq;
+using Microsoft.AspNetCore.Authorization;
+
 
 namespace GameStoreWeb.Controllers
 {
+    [Authorize]
     public class GameSummaryController : Controller
     {
         private HttpClient client = new HttpClient();
@@ -15,8 +18,15 @@ namespace GameStoreWeb.Controllers
         [HttpGet]
         public async Task<IActionResult> Index()
         {
-            // int maxRetries = 3;
-            // int delay = 2000; // 2 seconds
+            try
+            {
+                AttachTokenToClient();
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             List<GameSummary> games = new List<GameSummary>();
             bool apiAwake = await WakeUpApi(client, "https://gamestore-api-l1of.onrender.com" + "/health");
             if (!apiAwake)
@@ -27,10 +37,7 @@ namespace GameStoreWeb.Controllers
             {
                 Console.WriteLine("✅ API is awake.");
             }
-            // for (int i = 0; i < maxRetries; i++)
-            // {
-            //     try
-            //     {
+
             HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/").Result;
             if (response.IsSuccessStatusCode)
             {
@@ -41,6 +48,13 @@ namespace GameStoreWeb.Controllers
                     games = data;
                 }
             }
+            return View(games);
+            // int maxRetries = 3;
+            // int delay = 2000; // 2 seconds
+            // for (int i = 0; i < maxRetries; i++)
+            // {
+            //     try
+            //     {
             //     }
             //     catch (HttpRequestException)
             //     {
@@ -51,12 +65,20 @@ namespace GameStoreWeb.Controllers
             //     delay *= 2; // Exponential backoff
             // }
             // RedirectToAction("Error");
-            return View(games);
         }
 
         [HttpGet]
         public IActionResult Create()
         {
+            try
+            {
+                AttachTokenToClient();
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             GameStoreViewModel gameStoreViewModel = new GameStoreViewModel
             {
                 GameDetails = null,
@@ -69,6 +91,15 @@ namespace GameStoreWeb.Controllers
         [HttpPost]
         public IActionResult Create(GameStoreViewModel gameStoreViewModel)
         {
+            try
+            {
+                AttachTokenToClient();
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             CreateGameModel createGameModel = new CreateGameModel();
             createGameModel.Name = gameStoreViewModel.GameSummary.name;
             createGameModel.GenreId = gameStoreViewModel.GenreModel.Id;
@@ -93,6 +124,15 @@ namespace GameStoreWeb.Controllers
         [HttpGet]
         public IActionResult Edit(int id)
         {
+            try
+            {
+                AttachTokenToClient();
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             GameDetails gameDetails = new GameDetails();
             HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/" + id).Result;
             if (response.IsSuccessStatusCode)
@@ -118,6 +158,15 @@ namespace GameStoreWeb.Controllers
         [HttpPost]
         public IActionResult Edit(GameStoreViewModel gameStoreViewModel, int Id)
         {
+            try
+            {
+                AttachTokenToClient();
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             UpdateGameModel updateGameModel = new UpdateGameModel();
             updateGameModel.Name = gameStoreViewModel.GameDetails.Name;
             updateGameModel.GenreId = gameStoreViewModel.GameDetails.GenreId;
@@ -142,6 +191,15 @@ namespace GameStoreWeb.Controllers
         [HttpGet]
         public IActionResult Details(int Id)
         {
+            try
+            {
+                AttachTokenToClient();
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             GameDetails game = new GameDetails();
             GameSummary summary = new GameSummary();
             HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/" + Id).Result;
@@ -168,6 +226,15 @@ namespace GameStoreWeb.Controllers
         [HttpGet]
         public IActionResult Delete(int Id)
         {
+            try
+            {
+                AttachTokenToClient();
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             GameDetails game = new GameDetails();
             GameSummary summary = new GameSummary();
             HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/" + Id).Result;
@@ -194,6 +261,15 @@ namespace GameStoreWeb.Controllers
         [HttpPost]
         public IActionResult Delete(GameSummary gameSummary, int Id)
         {
+            try
+            {
+                AttachTokenToClient();
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             HttpResponseMessage response = client.DeleteAsync(GetBaseUrl() + "/games/" + Id).Result;
             if (response.IsSuccessStatusCode)
             {
@@ -258,6 +334,16 @@ namespace GameStoreWeb.Controllers
             {
                 return false;
             }
+        }
+
+        private void AttachTokenToClient()
+        {
+            var token = HttpContext.Session.GetString("JWToken");
+            if (string.IsNullOrEmpty(token))
+                throw new UnauthorizedAccessException("No JWT token in session");
+
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         }
     }
 }
