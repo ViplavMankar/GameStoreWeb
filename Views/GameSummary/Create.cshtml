@@ -33,21 +33,22 @@
                 <span asp-validation-for="@Model.GameSummary.releaseDate" class="text-danger"></span>
             </div>
             <div class="form-group">
-                @* <input type="submit" value="Create" class="btn" style="background-color: #48A6A7;" /> *@
-                <input type="submit" value="Create" style="background-color: #48A6A7;"
+                <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
+                    param-Type='@("submit")' param-Value='@("Create")' param-BgColor='@("48A6A7")'
+                    param-OnMouseEnterBgColor='@("006A71")' />
+                @* <input type="submit" value="Create" style="background-color: #48A6A7;"
                     onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
                     onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
-                    class="btn btn-border-radius-lg" />
+                    class="btn btn-border-radius-lg" /> *@
             </div>
         </form>
     </div>
 </div>
-
 <div>
-    <input type="button" value="Back to list" onclick="location.href='@Url.Action("Index", "GameSummary")'"
-        style="background-color: #48A6A7;" onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
-        onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
-        class="btn btn-border-radius-lg" />
+    <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
+        param-Type='@("button")' param-Value='@("Back to List")'
+        param-OnClickUrlString='@($"location.href=\'{Url.Action("Index", "GameSummary")}\';")'
+        param-BgColor='@("48A6A7")' param-OnMouseEnterBgColor='@("006A71")' />
 </div>
 
 <script type="text/javascript">

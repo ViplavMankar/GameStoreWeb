@@ -43,15 +43,21 @@
     </dl>
 </div>
 <div>
-    @* @Html.ActionLink("Edit", "Edit", new { id = Model.id }) | *@
-    <input type="button" value="Edit"
+    <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
+        param-Type='@("button")' param-Value='@("Edit")'
+        param-OnClickUrlString='@($"location.href=\'{Url.Action("Edit", "GameSummary")}\';")'
+        param-BgColor='@("48A6A7")' param-OnMouseEnterBgColor='@("006A71")' /> |
+    @* <input type="button" value="Edit"
         onclick="location.href='@Url.Action("Edit", "GameSummary", new { id = Model.id })'"
         style="background-color: #48A6A7;" onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
         onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
-        class="btn btn-border-radius-lg" /> |
-    @* <a asp-action="Index">Back to List</a> *@
-    <input type="button" value="Back to List" onclick="location.href='@Url.Action("Index", "GameSummary")'"
+        class="btn btn-border-radius-lg" /> | *@
+    <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
+        param-Type='@("button")' param-Value='@("Back to List")'
+        param-OnClickUrlString='@($"location.href=\'{Url.Action("Index", "GameSummary")}\';")'
+        param-BgColor='@("48A6A7")' param-OnMouseEnterBgColor='@("006A71")' />
+    @* <input type="button" value="Back to List" onclick="location.href='@Url.Action("Index", "GameSummary")'"
         style="background-color: #48A6A7;" onmouseover="this.style.backgroundColor='#006A71'; this.style.color='white';"
         onmouseleave="this.style.backgroundColor='#48A6A7'; this.style.color='black';"
-        class="btn btn-border-radius-lg" />
+        class="btn btn-border-radius-lg" /> *@
 </div>
