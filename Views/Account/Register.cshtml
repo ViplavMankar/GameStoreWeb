@@ -1,0 +1,27 @@
+﻿@model GameStoreWeb.Models.RegisterViewModel
+
+<h2>Register</h2>
+
+<form asp-action="Register" method="post">
+    <div>
+        <label style="width: 100px;" asp-for="Username"></label>
+        <input asp-for="Username" />
+        <span asp-validation-for="Username"></span>
+    </div>
+    <div>
+        <label style="width: 100px;" asp-for="Email"></label>
+        <input asp-for="Email" type="email" />
+        <span asp-validation-for="Email"></span>
+    </div>
+    <div>
+        <label style="width: 100px;" asp-for="Password"></label>
+        <input asp-for="Password" type="password" />
+        <span asp-validation-for="Password"></span>
+    </div>
+    @* <button type="submit">Register</button> *@
+    <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
+        param-Type='@("submit")' param-Value='@("Register")' param-BgColor='@("48A6A7")'
+        param-OnMouseEnterBgColor='@("006A71")' />
+</form>
+
+<a asp-action="Login">Already have an account? Login</a>

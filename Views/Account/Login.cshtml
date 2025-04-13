@@ -1,0 +1,32 @@
+﻿@model GameStoreWeb.Models.LoginViewModel
+
+<h2>Login</h2>
+
+<form asp-action="Login" method="post">
+    <div>
+        <label style="width: 100px;" asp-for="Username"></label>
+        <input asp-for="Username" />
+        <span asp-validation-for="Username"></span>
+    </div>
+    <div>
+        <label style="width: 100px;" asp-for="Password"></label>
+        <input asp-for="Password" type="password" />
+        <span asp-validation-for="Password"></span>
+    </div>
+    @* <button type="submit">Login</button> *@
+    <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
+        param-Type='@("submit")' param-Value='@("Login")' param-BgColor='@("48A6A7")'
+        param-OnMouseEnterBgColor='@("006A71")' />
+</form>
+
+@{
+    if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+}
+
+<a asp-action="Register">Don't have an account? Register</a>
