@@ -78,19 +78,5 @@ namespace GameStoreWeb.Controllers
             HttpContext.Session.Clear();
             return RedirectToAction("Login");
         }
-
-        private string GetBaseUrl()
-        {
-            string base_url = string.Empty;
-            if (Environment.GetEnvironmentVariable("RENDER") != null)
-            {
-                base_url = Environment.GetEnvironmentVariable("GAMESTORE_API_URL");
-            }
-            else
-            {
-                base_url = "http://localhost:5113";
-            }
-            return base_url;
-        }
     }
 }
