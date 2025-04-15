@@ -67,7 +67,7 @@ namespace GameStoreWeb.Controllers
                 ModelState.AddModelError("", "Registration failed.");
                 return View(model);
             }
-
+            TempData["Registration_success_message"] = "Account created successfully, Please login.";
             return RedirectToAction("Login");
         }
 
@@ -77,6 +77,20 @@ namespace GameStoreWeb.Controllers
             await HttpContext.SignOutAsync("Cookies");
             HttpContext.Session.Clear();
             return RedirectToAction("Login");
+        }
+
+        private string GetBaseUrl()
+        {
+            string base_url = string.Empty;
+            if (Environment.GetEnvironmentVariable("RENDER") != null)
+            {
+                base_url = Environment.GetEnvironmentVariable("GAMESTORE_API_URL");
+            }
+            else
+            {
+                base_url = "http://localhost:5113";
+            }
+            return base_url;
         }
     }
 }

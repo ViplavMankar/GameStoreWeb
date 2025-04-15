@@ -5,96 +5,127 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Newtonsoft.Json;
 using System.Text;
 using System.Xml.Linq;
+using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
+
 
 namespace GameStoreWeb.Controllers
 {
+    [Authorize]
     public class GameSummaryController : Controller
     {
-        private HttpClient client = new HttpClient();
+        private readonly IHttpClientFactory _httpClientFactory;
+
+        public GameSummaryController(IHttpClientFactory httpClientFactory)
+        {
+            _httpClientFactory = httpClientFactory;
+        }
 
         [HttpGet]
         public async Task<IActionResult> Index()
         {
-            // int maxRetries = 3;
-            // int delay = 2000; // 2 seconds
+            var client = _httpClientFactory.CreateClient("GameStoreApiService");
+            try
+            {
+                AttachTokenToClient(client);
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
             List<GameSummary> games = new List<GameSummary>();
-            bool apiAwake = await WakeUpApi(client, "https://gamestore-api-l1of.onrender.com" + "/health");
-            if (!apiAwake)
-            {
-                Console.WriteLine("⚠️ API did not respond to wake-up request.");
-            }
-            else
-            {
-                Console.WriteLine("✅ API is awake.");
-            }
-            // for (int i = 0; i < maxRetries; i++)
-            // {
-            //     try
-            //     {
-            HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/").Result;
+            await CheckApiHealth(client);
+
+            HttpResponseMessage response = await client.GetAsync("games/");
             if (response.IsSuccessStatusCode)
             {
-                string result = response.Content.ReadAsStringAsync().Result;
+                string result = await response.Content.ReadAsStringAsync();
                 var data = JsonConvert.DeserializeObject<List<GameSummary>>(result);
                 if (data != null)
                 {
                     games = data;
                 }
             }
-            //     }
-            //     catch (HttpRequestException)
-            //     {
-            //         Console.WriteLine($"Retrying in {delay / 1000} seconds...");
-            //     }
-
-            //     await Task.Delay(delay);
-            //     delay *= 2; // Exponential backoff
-            // }
-            // RedirectToAction("Error");
             return View(games);
         }
 
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var client = _httpClientFactory.CreateClient("GameStoreApiService");
+            try
+            {
+                AttachTokenToClient(client);
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             GameStoreViewModel gameStoreViewModel = new GameStoreViewModel
             {
                 GameDetails = null,
                 GameSummary = new GameSummary(),
-                GenreModel = BindDDL()
+                GenreModel = await BindDDL(client)
             };
             return View(gameStoreViewModel);
         }
 
         [HttpPost]
-        public IActionResult Create(GameStoreViewModel gameStoreViewModel)
+        public async Task<IActionResult> Create(GameStoreViewModel gameStoreViewModel)
         {
-            CreateGameModel createGameModel = new CreateGameModel();
-            createGameModel.Name = gameStoreViewModel.GameSummary.name;
-            createGameModel.GenreId = gameStoreViewModel.GenreModel.Id;
-            createGameModel.Price = gameStoreViewModel.GameSummary.price;
-            createGameModel.ReleaseDate = gameStoreViewModel.GameSummary.releaseDate.ToString("yyyy-MM-dd");
+            var client = _httpClientFactory.CreateClient("GameStoreApiService");
 
-            string gameSummaryJson = JsonConvert.SerializeObject(createGameModel);
+            try
+            {
+                AttachTokenToClient(client);
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
 
-            StringContent content = new StringContent(gameSummaryJson, Encoding.UTF8, "application/json");
-            HttpResponseMessage response = client.PostAsync(GetBaseUrl() + "/games/", content).Result;
+            var createGameModel = new CreateGameModel
+            {
+                Name = gameStoreViewModel.GameSummary.name,
+                GenreId = gameStoreViewModel.GenreModel.Id,
+                Price = gameStoreViewModel.GameSummary.price,
+                ReleaseDate = gameStoreViewModel.GameSummary.releaseDate.ToString("yyyy-MM-dd")
+            };
+
+            var gameSummaryJson = JsonConvert.SerializeObject(createGameModel);
+            var content = new StringContent(gameSummaryJson, Encoding.UTF8, "application/json");
+
+            HttpResponseMessage response = await client.PostAsync("games/", content);
+
             if (response.IsSuccessStatusCode)
             {
                 TempData["inserted_message"] = "Game Added successfully";
                 return RedirectToAction("Index");
             }
 
-            gameStoreViewModel.GenreModel = BindDDL();
+            // Re-bind dropdown in case of failure
+            gameStoreViewModel.GenreModel = await BindDDL(client);
 
             return View(gameStoreViewModel);
         }
 
+
         [HttpGet]
-        public IActionResult Edit(int id)
+        public async Task<IActionResult> Edit(int id)
         {
+            var client = _httpClientFactory.CreateClient("GameStoreApiService");
+            try
+            {
+                AttachTokenToClient(client);
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             GameDetails gameDetails = new GameDetails();
-            HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/" + id).Result;
+            HttpResponseMessage response = await client.GetAsync("games/" + id);
             if (response.IsSuccessStatusCode)
             {
                 string result = response.Content.ReadAsStringAsync().Result;
@@ -109,56 +140,80 @@ namespace GameStoreWeb.Controllers
             {
                 GameDetails = gameDetails,
                 GameSummary = null,
-                GenreModel = BindDDL(),
+                GenreModel = await BindDDL(client),
             };
 
             return View(gameStoreViewModel);
         }
 
         [HttpPost]
-        public IActionResult Edit(GameStoreViewModel gameStoreViewModel, int Id)
+        public async Task<IActionResult> Edit(GameStoreViewModel gameStoreViewModel, int Id)
         {
-            UpdateGameModel updateGameModel = new UpdateGameModel();
-            updateGameModel.Name = gameStoreViewModel.GameDetails.Name;
-            updateGameModel.GenreId = gameStoreViewModel.GameDetails.GenreId;
-            updateGameModel.Price = gameStoreViewModel.GameDetails.Price;
-            updateGameModel.ReleaseDate = gameStoreViewModel.GameDetails.ReleaseDate.ToString("yyyy-MM-dd");
+            var client = _httpClientFactory.CreateClient("GameStoreApiService");
+            try
+            {
+                AttachTokenToClient(client);
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var updateGameModel = new UpdateGameModel
+            {
+                Name = gameStoreViewModel.GameDetails.Name,
+                GenreId = gameStoreViewModel.GameDetails.GenreId,
+                Price = gameStoreViewModel.GameDetails.Price,
+                ReleaseDate = gameStoreViewModel.GameDetails.ReleaseDate.ToString("yyyy-MM-dd")
+            };
 
             string gameSummaryJson = JsonConvert.SerializeObject(updateGameModel);
 
             StringContent content = new StringContent(gameSummaryJson, Encoding.UTF8, "application/json");
-            HttpResponseMessage response = client.PutAsync(GetBaseUrl() + "/games/" + Id, content).Result;
+            HttpResponseMessage response = await client.PutAsync("games/" + Id, content);
             if (response.IsSuccessStatusCode)
             {
                 TempData["updated_message"] = "Game Updated successfully";
                 return RedirectToAction("Index");
             }
 
-            gameStoreViewModel.GenreModel = BindDDL();
+            gameStoreViewModel.GenreModel = await BindDDL(client);
 
             return View(gameStoreViewModel);
         }
 
         [HttpGet]
-        public IActionResult Details(int Id)
+        public async Task<IActionResult> Details(int Id)
         {
+            var client = _httpClientFactory.CreateClient("GameStoreApiService");
+            try
+            {
+                AttachTokenToClient(client);
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             GameDetails game = new GameDetails();
-            GameSummary summary = new GameSummary();
-            HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/" + Id).Result;
+            HttpResponseMessage response = await client.GetAsync("/games/" + Id);
             if (response.IsSuccessStatusCode)
             {
-                string result = response.Content.ReadAsStringAsync().Result;
+                string result = await response.Content.ReadAsStringAsync();
                 var data = JsonConvert.DeserializeObject<GameDetails>(result);
                 if (data != null)
                 {
                     game = data;
                 }
-                GenreModel genreModel = BindDDL();
-                summary.id = game.Id;
-                summary.name = game.Name;
-                summary.genre = genreModel.Genres?.Find(x => x.Value == game.GenreId.ToString())?.Text;
-                summary.price = game.Price;
-                summary.releaseDate = game.ReleaseDate;
+                GenreModel genreModel = await BindDDL(client);
+                GameSummary summary = new GameSummary
+                {
+                    id = game.Id,
+                    name = game.Name,
+                    genre = genreModel.Genres?.Find(x => x.Value == game.GenreId.ToString())?.Text,
+                    price = game.Price,
+                    releaseDate = game.ReleaseDate
+                };
                 return View(summary);
             }
             TempData["alert_message"] = "Game not found";
@@ -166,25 +221,37 @@ namespace GameStoreWeb.Controllers
         }
 
         [HttpGet]
-        public IActionResult Delete(int Id)
+        public async Task<IActionResult> Delete(int Id)
         {
+            var client = _httpClientFactory.CreateClient("GameStoreApiService");
+            try
+            {
+                AttachTokenToClient(client);
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             GameDetails game = new GameDetails();
-            GameSummary summary = new GameSummary();
-            HttpResponseMessage response = client.GetAsync(GetBaseUrl() + "/games/" + Id).Result;
+            HttpResponseMessage response = await client.GetAsync("games/" + Id);
             if (response.IsSuccessStatusCode)
             {
-                string result = response.Content.ReadAsStringAsync().Result;
+                string result = await response.Content.ReadAsStringAsync();
                 var data = JsonConvert.DeserializeObject<GameDetails>(result);
                 if (data != null)
                 {
                     game = data;
                 }
-                GenreModel genreModel = BindDDL();
-                summary.id = game.Id;
-                summary.name = game.Name;
-                summary.genre = genreModel.Genres?.Find(x => x.Value == game.GenreId.ToString())?.Text;
-                summary.price = game.Price;
-                summary.releaseDate = game.ReleaseDate;
+                GenreModel genreModel = await BindDDL(client);
+                GameSummary summary = new GameSummary
+                {
+                    id = game.Id,
+                    name = game.Name,
+                    genre = genreModel.Genres?.Find(x => x.Value == game.GenreId.ToString())?.Text,
+                    price = game.Price,
+                    releaseDate = game.ReleaseDate
+                };
                 return View(summary);
             }
             TempData["alert_message"] = "Game not found";
@@ -192,9 +259,19 @@ namespace GameStoreWeb.Controllers
         }
 
         [HttpPost]
-        public IActionResult Delete(GameSummary gameSummary, int Id)
+        public async Task<IActionResult> Delete(GameSummary gameSummary, int Id)
         {
-            HttpResponseMessage response = client.DeleteAsync(GetBaseUrl() + "/games/" + Id).Result;
+            var client = _httpClientFactory.CreateClient("GameStoreApiService");
+            try
+            {
+                AttachTokenToClient(client);
+            }
+            catch
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            HttpResponseMessage response = await client.DeleteAsync("games/" + Id);
             if (response.IsSuccessStatusCode)
             {
                 TempData["delete_message"] = "Game Deleted successfully";
@@ -203,14 +280,14 @@ namespace GameStoreWeb.Controllers
             return View(gameSummary);
         }
 
-        private GenreModel BindDDL()
+        private async Task<GenreModel> BindDDL(HttpClient client)
         {
             GenreModel genreModel = new GenreModel();
             genreModel.Genres = new List<SelectListItem>();
-            HttpResponseMessage genreResponse = client.GetAsync(GetBaseUrl() + "/genres").Result;
+            HttpResponseMessage genreResponse = await client.GetAsync("genres");
             if (genreResponse.IsSuccessStatusCode)
             {
-                string genreResult = genreResponse.Content.ReadAsStringAsync().Result;
+                string genreResult = await genreResponse.Content.ReadAsStringAsync();
                 var data = JsonConvert.DeserializeObject<List<Genre>>(genreResult);
                 genreModel.Genres.Add(new SelectListItem
                 {
@@ -232,20 +309,6 @@ namespace GameStoreWeb.Controllers
             return genreModel;
         }
 
-        private string GetBaseUrl()
-        {
-            string base_url = string.Empty;
-            if (Environment.GetEnvironmentVariable("RENDER") != null)
-            {
-                base_url = Environment.GetEnvironmentVariable("GAMESTORE_API_URL");
-            }
-            else
-            {
-                base_url = "http://localhost:5113";
-            }
-            return base_url;
-        }
-
         private static async Task<bool> WakeUpApi(HttpClient client, string healthCheckUrl)
         {
             try
@@ -259,5 +322,48 @@ namespace GameStoreWeb.Controllers
                 return false;
             }
         }
+
+        private void AttachTokenToClient(HttpClient client)
+        {
+            var token = HttpContext.Session.GetString("JWToken");
+            if (string.IsNullOrEmpty(token))
+                throw new UnauthorizedAccessException("No JWT token in session");
+
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+
+        private async Task CheckApiHealth(HttpClient client)
+        {
+            bool apiAwake = await WakeUpApi(client, "health");
+            if (!apiAwake)
+            {
+                Console.WriteLine("⚠️ API did not respond to wake-up request.");
+            }
+            else
+            {
+                Console.WriteLine("✅ API is awake.");
+            }
+        }
+
+        //private void RetryCode()
+        //{
+        // int maxRetries = 3;
+        // int delay = 2000; // 2 seconds
+        // for (int i = 0; i < maxRetries; i++)
+        // {
+        //     try
+        //     {
+        //     }
+        //     catch (HttpRequestException)
+        //     {
+        //         Console.WriteLine($"Retrying in {delay / 1000} seconds...");
+        //     }
+
+        //     await Task.Delay(delay);
+        //     delay *= 2; // Exponential backoff
+        // }
+        // RedirectToAction("Error");
+        //}
     }
 }

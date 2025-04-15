@@ -1,28 +1,115 @@
 using GameStoreWeb;
-var builder = WebApplication.CreateBuilder(args);
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
-// Add services to the container.
+var builder = WebApplication.CreateBuilder(args);
+var jwtKey = string.Empty;
+
 builder.Services.AddControllersWithViews();
-// builder.Services.AddRazorPages();
-// builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddServerSideBlazor();
 
-
-if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
+if (builder.Environment.IsDevelopment())
 {
+    jwtKey = builder.Configuration["Jwt:Key"];
+    if (string.IsNullOrEmpty(jwtKey))
+    {
+        throw new InvalidOperationException("jwtkey appsetting value not set.");
+    }
+}
+else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
+{
+    jwtKey = Environment.GetEnvironmentVariable("JWT_AUTH_KEY");
+    if (string.IsNullOrEmpty(jwtKey))
+    {
+        throw new InvalidOperationException("JWT_AUTH_KEY environment variable is not set.");
+    }
+}
+
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30); // adjust as needed
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = "Cookies";
+    options.DefaultChallengeScheme = "Cookies";
+})
+.AddCookie("Cookies", options =>
+{
+    options.LoginPath = new PathString("/Account/Login");
+    options.AccessDeniedPath = new PathString("/Account/AccessDenied");
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtKey)) // <- pull from config!
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // ✅ Grab JWT from session instead of Authorization header
+            var token = context.HttpContext.Session.GetString("JWToken");
+            if (!string.IsNullOrEmpty(token))
+                context.Token = token;
+
+            return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            context.Response.Redirect("/Account/Login");
+            context.HandleResponse(); // Prevents the default 401 response
+            return Task.CompletedTask;
+        }
+    };
+});
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddHttpClient("AuthService", client =>
+    {
+        client.BaseAddress = new Uri("http://localhost:5208/");
+    });
+    builder.Services.AddHttpClient("GameStoreApiService", client =>
+    {
+        client.BaseAddress = new Uri("http://localhost:5113/");
+    });
+}
+else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
+{
+    builder.Services.AddHttpClient("AuthService", client =>
+    {
+        client.BaseAddress = Environment.GetEnvironmentVariable("AUTH_SERVICE_URL") != null
+            ? new Uri(Environment.GetEnvironmentVariable("AUTH_SERVICE_URL"))
+            : throw new Exception("Environment variable not set.");
+    });
+    builder.Services.AddHttpClient("GameStoreApiService", client =>
+    {
+        client.BaseAddress = Environment.GetEnvironmentVariable("GAMESTORE_API_URL") != null
+            ? new Uri(Environment.GetEnvironmentVariable("GAMESTORE_API_URL"))
+            : throw new Exception("Environment variable not set.");
+    });
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
-
 }
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
-    // app.UseHttpsRedirection();
 }
 if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
 {
@@ -32,20 +119,12 @@ if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
-
-// app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
-
+app.UseSession();
+app.UseAuthentication();
 app.UseAuthorization();
-
-app.MapFallbackToController("Blazor", "Home");
-// app.MapRazorPages();
-
-// app.MapRazorComponents<App>()
-//    .AddInteractiveServerRenderMode();
-
 
 app.MapControllerRoute(
     name: "default",
