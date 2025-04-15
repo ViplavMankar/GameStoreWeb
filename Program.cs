@@ -4,10 +4,27 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+var jwtKey = string.Empty;
 
-// Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddServerSideBlazor();
+
+if (builder.Environment.IsDevelopment())
+{
+    jwtKey = builder.Configuration["Jwt:Key"];
+    if (string.IsNullOrEmpty(jwtKey))
+    {
+        throw new InvalidOperationException("jwtkey appsetting value not set.");
+    }
+}
+else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
+{
+    jwtKey = Environment.GetEnvironmentVariable("JWT_AUTH_KEY");
+    if (string.IsNullOrEmpty(jwtKey))
+    {
+        throw new InvalidOperationException("JWT_AUTH_KEY environment variable is not set.");
+    }
+}
 
 builder.Services.AddSession(options =>
 {
@@ -35,7 +52,7 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes("gamestore_app_authentication_jwt_key")) // <- pull from config!
+            Encoding.UTF8.GetBytes(jwtKey)) // <- pull from config!
     };
 
     options.Events = new JwtBearerEvents
@@ -62,7 +79,11 @@ if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddHttpClient("AuthService", client =>
     {
-        client.BaseAddress = new Uri("http://localhost:5204/");
+        client.BaseAddress = new Uri("http://localhost:5208/");
+    });
+    builder.Services.AddHttpClient("GameStoreApiService", client =>
+    {
+        client.BaseAddress = new Uri("http://localhost:5113/");
     });
 }
 else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
@@ -71,19 +92,20 @@ else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
     {
         client.BaseAddress = Environment.GetEnvironmentVariable("AUTH_SERVICE_URL") != null
             ? new Uri(Environment.GetEnvironmentVariable("AUTH_SERVICE_URL"))
-            : new Uri("https://auth-service-production-1234.onrender.com/");
+            : throw new Exception("Environment variable not set.");
     });
-}
-
-if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
-{
+    builder.Services.AddHttpClient("GameStoreApiService", client =>
+    {
+        client.BaseAddress = Environment.GetEnvironmentVariable("GAMESTORE_API_URL") != null
+            ? new Uri(Environment.GetEnvironmentVariable("GAMESTORE_API_URL"))
+            : throw new Exception("Environment variable not set.");
+    });
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
-
 }
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
