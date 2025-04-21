@@ -1,12 +1,17 @@
-using GameStoreWeb;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.Components.Authorization;
+
+using GameStoreWeb;
+using GameStoreWeb.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 var jwtKey = string.Empty;
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
 if (builder.Environment.IsDevelopment())
@@ -41,7 +46,7 @@ builder.Services.AddAuthentication(options =>
 .AddCookie("Cookies", options =>
 {
     options.LoginPath = new PathString("/Account/Login");
-    options.AccessDeniedPath = new PathString("/Account/AccessDenied");
+    // options.AccessDeniedPath = new PathString("/Account/AccessDenied");
 })
 .AddJwtBearer(options =>
 {
@@ -74,6 +79,10 @@ builder.Services.AddAuthentication(options =>
         }
     };
 });
+
+builder.Services.AddAuthorization();
+builder.Services.AddHttpContextAccessor(); // Needed to access session inside the provider
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -128,7 +137,9 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=GameSummary}/{action=Index}/{id?}");
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapBlazorHub();
+
+app.MapFallbackToPage("/marketplace", "/_Host");
 app.Run();
