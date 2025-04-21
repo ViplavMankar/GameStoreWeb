@@ -48,7 +48,7 @@ namespace GameStoreWeb.Controllers
             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
 
             await HttpContext.SignInAsync("Cookies", claimsPrincipal); // this is key
-            return RedirectToAction("Index", "GameSummary");
+            return RedirectToAction("Index", "Home");
         }
 
         [HttpGet]
