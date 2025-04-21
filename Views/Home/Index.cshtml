@@ -1,7 +1,49 @@
-﻿
-@{
-    ViewData["Title"] = "Index";
+﻿@{
+    ViewData["Title"] = "Welcome to GameStore!";
 }
 
-<h1>Index</h1>
+<div class="container mt-5">
+    <h1 class="display-4">Welcome to GameStore</h1>
+    <p class="lead">An indie platform for showcasing and playing mini web-based games.</p>
 
+    <section class="mt-4">
+        <h3>🚀 Technologies Used</h3>
+        <ul>
+            <li>ASP.NET Core MVC + Blazor Server</li>
+            <li>JWT Authentication with Identity</li>
+            <li>PostgreSQL + EF Core</li>
+            <li>Hosted on Render + GitHub Pages</li>
+        </ul>
+    </section>
+
+    <section class="mt-4">
+        <h3>🎯 Features Implemented</h3>
+        <ul>
+            <li>Login/Registration with session handling</li>
+            <li>Secure token-based auth via AuthService</li>
+            <li>Game marketplace with thumbnails and links</li>
+            <li>Reusable Blazor components</li>
+        </ul>
+    </section>
+
+    <section class="mt-4">
+        <h3>What is GameStore?</h3>
+        <p>GameStore is an online Games platform that can be used to play games on the browser, share own created games
+            to the community to showcase their skill of developing games. The platform consists mainly HTML based games
+            capable of running on the browser itself. In the initial version v1 only the games that
+            are hosted by the user itself and they can be hosted free of cost anywhere from Github pages, Render,
+            Railway or other hosting platforms. The app is in very initial stages and only contains the games developed
+            by me as part of javascript learning experience, hopely many games will be added onwards from here.
+            Explaining the structure of the website for v1 :
+            1. Marketplace : Scroll the Marketplace of many games and save any games from the collection shared within
+            the community.
+            2. Saved collection : The games saved by you are here, play the games from here by visiting the game link
+            using the Play Game button.
+            3. Share Game : Share games with the community to showcase the uniqueness of your game, and also to increase
+            the amount of games on this platform, thanks.
+
+            Many more games to be added, features to be supported and scaling to be done in the future for this
+            platform. </p>
+    </section>
+    <p class="text-muted mt-5">Thank you for checking out GameStore. This is just the beginning!</p>
+</div>

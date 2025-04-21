@@ -1,0 +1,53 @@
+@page "/marketplace"
+
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+@inject ILogger<Marketplace> Logger
+@using Microsoft.AspNetCore.Components.Authorization
+
+@using GameStoreWeb.Models
+@using GameStoreWeb.Components
+
+<AuthorizeView>
+    <Authorized>
+        <h2 class="text-2xl font-bold mb-4">Marketplace</h2>
+
+        @if (games == null)
+        {
+            <p>Loading games...</p>
+        }
+        else if (games.Count == 0)
+        {
+            <p>No games found.</p>
+        }
+        else
+        {
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                @foreach (var game in games)
+                {
+                    <GameTile Game="game" />
+                }
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>You must <a href="/Account/Login">log in</a>.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private List<GameReadDto> games;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            games = await http.GetFromJsonAsync<List<GameReadDto>>("api/Games/GetAll");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading games.");
+        }
+    }
+}

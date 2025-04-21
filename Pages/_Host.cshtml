@@ -1,0 +1,74 @@
+﻿@page "/marketplace"
+@namespace GameStoreWeb.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Marketplace</title>
+    <base href="~/" />
+    <link rel="stylesheet" href="css/site.css" />
+    <link href="~/css/tailwind-output.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/GameStoreWeb.styles.css" asp-append-version="true" />
+</head>
+
+<body>
+
+    <header></header>
+    <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-gradient border-bottom box-shadow mb-3"
+        style="background-color: #60B5FF;">
+        <div class="container-fluid">
+            <a class="nav-link text-dark" href="/Home/Index">GameStoreWeb</a> @*To change this to my saved collection page,
+                 then to some base page*@
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
+                aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                <ul class="navbar-nav flex-grow-1">
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" href="/marketplace">Marketplace</a>
+                    </li>
+                    <li class="nav-item">
+                        @* <a class="nav-link text-dark" asp-area="" asp-controller="Home"
+                                asp-action="Privacy">Privacy</a> *@
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-link nav-link text-dark">Logout</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            <app>
+                <CascadingAuthenticationState>
+                    <component type="typeof(App)" render-mode="ServerPrerendered" />
+                </CascadingAuthenticationState>
+            </app>
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2025 - GameStoreWeb - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/_framework/blazor.server.js"></script>
+</body>
+
+</html>
