@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation
 @inject ILogger<Marketplace> Logger
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
 
 @using GameStoreWeb.Models
 @using GameStoreWeb.Components
@@ -11,6 +12,14 @@
 <AuthorizeView>
     <Authorized>
         <h2 class="text-2xl font-bold mb-4">Marketplace</h2>
+
+        <button @onclick="Navigate" class="inline-block px-4 py-2 rounded-2xl transition text-black hover:text-white"
+            style="background-color: #48A6A7;margin-left: 50px;margin-right: 50px;"
+            onmouseover="this.style.backgroundColor='#006A71';" onmouseleave="this.style.backgroundColor='#48A6A7';">
+            ➕ Add Game
+        </button>
+        @* <ButtonComponentBlazor Type="button" Value="➕ Add Game" OnClickUrlString="/addGame" BgColor="48A6A7"
+            OnMouseEnterBgColor="006A71" AdditionalStyleTags="margin-left: 50px;margin-right: 50px;" /> *@
 
         @if (games == null)
         {
@@ -49,5 +58,9 @@
         {
             Logger.LogError(ex, "Error loading games.");
         }
+    }
+    private void Navigate()
+    {
+        Navigation.NavigateTo("/addGame");
     }
 }

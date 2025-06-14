@@ -37,6 +37,16 @@ namespace GameStoreWeb.Controllers
             // Store JWT in cookie or local storage (session/cookie setup follows)
             HttpContext.Session.SetString("JWToken", result.Token);
             HttpContext.Session.SetString("Username", model.Username);
+
+            HttpContext.Response.Cookies.Append("JWToken", result.Token, new CookieOptions
+            {
+                HttpOnly = false, // set to true if you're not accessing via JS
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(30)
+            });
+
+
             // ✅ NEW: Sign in using cookies
             var claims = new List<Claim>
             {
@@ -65,6 +75,15 @@ namespace GameStoreWeb.Controllers
             if (!response.IsSuccessStatusCode)
             {
                 ModelState.AddModelError("", "Registration failed.");
+                TempData["RegistrationErrorMessage"] = "Registration failed. Please try again.";
+                if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+                {
+                    ModelState.AddModelError("Username", "Username already exists.");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                {
+                    ModelState.AddModelError("", "Invalid registration data.");
+                }
                 return View(model);
             }
             TempData["Registration_success_message"] = "Account created successfully, Please login.";

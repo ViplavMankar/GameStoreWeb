@@ -1,0 +1,85 @@
+﻿@page "/addGame"
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+@inject ILogger<Marketplace> Logger
+
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+
+@using GameStoreWeb.Models
+@using GameStoreWeb.Components
+
+<h2>Add New Game</h2>
+
+<div class="mb-4">
+    <label for="title">Game Title:</label>
+    <input type="text" id="title" @bind="GameTitle" class="form-control" />
+</div>
+
+<div class="mb-4">
+    <label for="url">Game URL:</label>
+    <input type="text" id="url" @bind="GameUrl" class="form-control" />
+</div>
+
+<div class="mb-4">
+    <label for="description">Description:</label>
+    <textarea id="description" @bind="GameDescription" class="form-control"></textarea>
+</div>
+
+<div class="mb-4">
+    <label for="thumbnailurl">Thumbnail URL:</label>
+    <textarea id="thumbnailurl" @bind="GameThumbnailUrl" class="form-control"></textarea>
+</div>
+
+<button class="btn btn-success" @onclick="SaveGame">Save</button>
+
+@code {
+    private string GameTitle;
+    private string GameUrl;
+    private string GameDescription;
+    private string GameThumbnailUrl;
+
+    private async Task SaveGame()
+    {
+        try
+        {
+            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+
+            var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            var newGame = new GameCreateDto
+            {
+                Title = GameTitle,
+                Description = GameDescription,
+                GameUrl = GameUrl,
+                ThumbnailUrl = GameThumbnailUrl
+            };
+
+            var response = await http.PostAsJsonAsync("api/Games/Create", newGame);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/marketplace");
+                Console.WriteLine("Game added successfully.");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("Error: " + error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving game.");
+            Console.WriteLine("An error occurred while saving the game: " + ex.Message);
+        }
+    }
+}
