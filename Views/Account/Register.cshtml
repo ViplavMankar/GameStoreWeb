@@ -6,6 +6,16 @@
 
 <h2>Register</h2>
 
+@{
+    if (TempData["RegistrationErrorMessage"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            @TempData["RegistrationErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+}
+
 <form asp-action="Register" method="post">
     <div>
         <label style="width: 100px;" asp-for="Username"></label>

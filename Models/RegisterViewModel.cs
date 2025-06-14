@@ -13,6 +13,7 @@ namespace GameStoreWeb.Models
 
         [Required]
         [DataType(DataType.Password)]
+        [RegularExpression(@"^(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).+$", ErrorMessage = "Password must have 1 uppercase character, 1 number and 1 alphanumeric character in the format.")]
         public string Password { get; set; }
     }
 }

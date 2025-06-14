@@ -142,4 +142,5 @@ app.MapControllerRoute(
 app.MapBlazorHub();
 
 app.MapFallbackToPage("/marketplace", "/_Host");
+app.MapFallbackToPage("/addGame", "/_Host");
 app.Run();
