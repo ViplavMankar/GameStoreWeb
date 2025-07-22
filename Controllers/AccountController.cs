@@ -75,7 +75,7 @@ namespace GameStoreWeb.Controllers
             if (!response.IsSuccessStatusCode)
             {
                 ModelState.AddModelError("", "Registration failed.");
-                TempData["RegistrationErrorMessage"] = "Registration failed. Please try again.";
+                TempData["Registration_error_message"] = "Registration failed. Please try again.";
                 if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
                 {
                     ModelState.AddModelError("Username", "Username already exists.");
