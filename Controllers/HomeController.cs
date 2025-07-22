@@ -59,30 +59,4 @@ public class HomeController : Controller
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
     }
-
-    private async Task CheckApiHealth(HttpClient client)
-    {
-        bool apiAwake = await WakeUpApi(client, "health");
-        if (!apiAwake)
-        {
-            Console.WriteLine("⚠️ API did not respond to wake-up request.");
-        }
-        else
-        {
-            Console.WriteLine("✅ API is awake.");
-        }
-    }
-    private static async Task<bool> WakeUpApi(HttpClient client, string healthCheckUrl)
-    {
-        try
-        {
-            Console.WriteLine("🔄 Waking up API...");
-            HttpResponseMessage response = await client.GetAsync(healthCheckUrl);
-            return response.IsSuccessStatusCode;
-        }
-        catch
-        {
-            return false;
-        }
-    }
 }

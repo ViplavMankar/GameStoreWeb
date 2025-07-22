@@ -14,28 +14,34 @@
 
 <h2>Add New Game</h2>
 
-<div class="mb-4">
-    <label for="title">Game Title:</label>
-    <input type="text" id="title" @bind="GameTitle" class="form-control" />
-</div>
+<AuthorizeView>
+    <Authorized>
+        <div class="mb-4">
+            <label for="title">Game Title:</label>
+            <input type="text" id="title" @bind="GameTitle" class="form-control" />
+        </div>
 
-<div class="mb-4">
-    <label for="url">Game URL:</label>
-    <input type="text" id="url" @bind="GameUrl" class="form-control" />
-</div>
+        <div class="mb-4">
+            <label for="url">Game URL:</label>
+            <input type="text" id="url" @bind="GameUrl" class="form-control" />
+        </div>
 
-<div class="mb-4">
-    <label for="description">Description:</label>
-    <textarea id="description" @bind="GameDescription" class="form-control"></textarea>
-</div>
+        <div class="mb-4">
+            <label for="description">Description:</label>
+            <textarea id="description" @bind="GameDescription" class="form-control"></textarea>
+        </div>
 
-<div class="mb-4">
-    <label for="thumbnailurl">Thumbnail URL:</label>
-    <textarea id="thumbnailurl" @bind="GameThumbnailUrl" class="form-control"></textarea>
-</div>
+        <div class="mb-4">
+            <label for="thumbnailurl">Thumbnail URL:</label>
+            <textarea id="thumbnailurl" @bind="GameThumbnailUrl" class="form-control"></textarea>
+        </div>
 
-<button class="btn btn-success" @onclick="SaveGame">Save</button>
-
+        <button class="btn btn-success" @onclick="SaveGame">Save</button>
+    </Authorized>
+    <NotAuthorized>
+        <p>You must <a href="/Account/Login">log in</a>.</p>
+    </NotAuthorized>
+</AuthorizeView>
 @code {
     private string GameTitle;
     private string GameUrl;

@@ -120,10 +120,6 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
-if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
-{
-    app.MapGet("/health", () => Results.Ok("API is running"));
-}
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
