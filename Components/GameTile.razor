@@ -1,9 +1,29 @@
-﻿@inject NavigationManager NavManager
+﻿@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
 @using Microsoft.AspNetCore.Components.Web
+@inject IHttpClientFactory HttpClientFactory
+@using System.Net.Http.Headers
 
 @using GameStoreWeb.Models
 @using GameStoreWeb.Components
 <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition duration-300">
+    @if(ShowBookmark)
+    {
+        <button @onclick="ToggleBookmark" class="absolute top-2 right-2 text-gray-700 hover:text-blue-500">
+            @if (isSavedValue)
+            {
+                <i class="fas fa-bookmark text-blue-500"></i> <!-- Filled icon -->
+            }
+            else
+            {
+                <i class="far fa-bookmark"></i> <!-- Outline icon -->
+            }
+        </button>
+    }
     <div style="background-size: cover;" class="mx-3 mt-3 mb-2 rounded-xl">
         <img src="@Game.ThumbnailUrl" alt="@Game.Title" class="w-full h-48 object-cover rounded-t-xl"
             style="width: 266px;height: 150px;" />
@@ -20,4 +40,69 @@
 @code {
     [Parameter]
     public GameReadDto Game { get; set; }
+
+    [Parameter]
+    public bool ShowBookmark {get; set;} = true;
+
+    [Parameter]
+    public EventCallback<(GameReadDto, bool)> OnBookmarkToggled {get; set;}
+
+    private bool isSavedValue;
+    private string userId;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        userId = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+
+        if(firstRender)
+        {
+            if(!string.IsNullOrEmpty(userId))
+            {
+                var http = HttpClientFactory.CreateClient("GameStoreApiService");
+                var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+                if (!string.IsNullOrEmpty(token))
+                {
+                    http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                }
+
+                var result = await http.GetFromJsonAsync<SavedResponse>($"/api/collections/exists/{Game.Id}");
+                isSavedValue = result?.isSaved ?? false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task ToggleBookmark()
+    {
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        if(string.IsNullOrEmpty(userId)) return;
+
+        if(isSavedValue)
+        {
+            await http.DeleteAsync($"/api/collections/Remove/{Game.Id}");
+            isSavedValue = false;
+        }
+        else
+        {
+            await http.PostAsJsonAsync($"/api/collections/Add",new {userId, gameId = Game.Id});
+            isSavedValue = true;
+        }
+
+        // Notify parent (Marketplace or My Collection)
+        await OnBookmarkToggled.InvokeAsync((Game, isSavedValue));
+    }
+
+    private class SavedResponse
+    {
+        public bool isSaved {get; set;}
+    }
 }

@@ -1,0 +1,90 @@
+﻿@page "/myCollection";
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation;
+@using System.Net.Http.Headers;
+@using Microsoft.AspNetCore.Components.Authorization;
+@using Microsoft.AspNetCore.Components.Web;
+@using GameStoreWeb.Models;
+@using GameStoreWeb.Components;
+@inject AuthenticationStateProvider AuthStateProvider;
+
+
+<h2 class="text-2xl font-bold mb-4">My Collection</h2>
+
+@if (isLoading)
+{
+    <p>Loading your saved games...</p>
+}
+else if (games == null || !games.Any())
+{
+    <p>You haven't saved any games yet. Go to the <a href="/marketplace" class="text-blue-600 underline">Marketplace</a> to
+        add some!</p>
+}
+else
+{
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        @foreach (var game in games)
+        {
+            <GameTile Game="game" ShowBookmark="showBookmarks" OnBookmarkToggled="OnBookmarkToggled" />
+        }
+    </div>
+}
+
+@code {
+    private List<GameReadDto> games = new();
+    private bool isLoading = true;
+    private bool showBookmarks = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (!user.Identity.IsAuthenticated)
+        {
+            @* Navigation.NavigateTo("/login"); *@
+            return;
+        }
+
+        var userId = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            @* Navigation.NavigateTo("/login"); *@
+            return;
+        }
+        try
+        {
+            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+            games = await http.GetFromJsonAsync<List<GameReadDto>>($"/api/collections/GetAll");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to load collection: {ex.Message}");
+            games = new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnBookmarkToggled((GameReadDto game, bool isNowSaved) args)
+    {
+        // Remove from collection if user unsaves it
+        var (game, isNowSaved) = args;
+        if (!isNowSaved)
+        {
+            games.Remove(game);
+            StateHasChanged();
+        }
+    }
+}
