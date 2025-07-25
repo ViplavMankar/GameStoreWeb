@@ -10,7 +10,7 @@
 
 @using GameStoreWeb.Models
 @using GameStoreWeb.Components
-<div class="bg-white rounded-xl shadow-md hover:shadow-lg transition duration-300">
+<div class="bg-white rounded-xl shadow-md hover:shadow-lg transition duration-300 relative">
     @if(ShowBookmark)
     {
         <button @onclick="ToggleBookmark" class="absolute top-2 right-2 text-gray-700 hover:text-blue-500">
@@ -22,6 +22,13 @@
             {
                 <i class="far fa-bookmark"></i> <!-- Outline icon -->
             }
+        </button>
+    }
+    @if (AllowEditing)
+    {
+        <button class="btn btn-sm btn-warning position-absolute top-0 end-0 m-2"
+                @onclick="() => OnEditClicked.InvokeAsync(Game.Id)">
+            <i class="bi bi-pencil-square"></i>
         </button>
     }
     <div style="background-size: cover;" class="mx-3 mt-3 mb-2 rounded-xl">
@@ -45,7 +52,13 @@
     public bool ShowBookmark {get; set;} = true;
 
     [Parameter]
+    public bool AllowEditing {get; set;} = false;
+
+    [Parameter]
     public EventCallback<(GameReadDto, bool)> OnBookmarkToggled {get; set;}
+
+    [Parameter]
+    public EventCallback<Guid> OnEditClicked {get; set;}
 
     private bool isSavedValue;
     private string userId;
