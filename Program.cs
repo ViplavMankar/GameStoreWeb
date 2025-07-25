@@ -140,4 +140,5 @@ app.MapBlazorHub();
 app.MapFallbackToPage("/marketplace", "/_Host");
 app.MapFallbackToPage("/addGame", "/_Host");
 app.MapFallbackToPage("/myCollection", "/_Host");
+app.MapFallbackToPage("/mygames", "/_Host");
 app.Run();
