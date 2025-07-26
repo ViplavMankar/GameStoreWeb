@@ -38,6 +38,14 @@
     <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
         param-Type='@("submit")' param-Value='@("Login")' param-BgColor='@("48A6A7")'
         param-OnMouseEnterBgColor='@("006A71")' />
+
+    <a href="@($"{ViewBag.AuthServiceBaseUrl}/api/auth/google/login")"
+        class="btn btn-danger mt-2 d-flex align-items-center justify-content-center"
+        style="gap: 8px; text-decoration: none; color: white; width: 200px;">
+        <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google"
+            style="width:20px; height:20px;">
+        <span>Sign in with Google</span>
+    </a>
 </form>
 
 <a asp-action="Register">Don't have an account? Register</a>
