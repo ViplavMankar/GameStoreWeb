@@ -487,3 +487,5 @@ $RECYCLE.BIN/
 
 # Text file for GameStore goals
 text.txt
+appsettings.Development.json
+run-https.sh
