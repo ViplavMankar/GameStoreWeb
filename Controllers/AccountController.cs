@@ -9,14 +9,27 @@ namespace GameStoreWeb.Controllers
     public class AccountController : Controller
     {
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
 
-        public AccountController(IHttpClientFactory httpClientFactory)
+        public AccountController(IHttpClientFactory httpClientFactory, IConfiguration configuration)
         {
             _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
         }
 
         [HttpGet]
-        public IActionResult Login() => View();
+        public IActionResult Login()
+        {
+            if (Environment.GetEnvironmentVariable("RENDER") != null)
+            {
+                ViewBag.AuthServiceBaseUrl = Environment.GetEnvironmentVariable("AUTH_SERVICE_URL");
+            }
+            else
+            {
+                ViewBag.AuthServiceBaseUrl = _configuration["AuthService:BaseUrl"];
+            }
+            return View();
+        }
 
         [HttpPost]
         public async Task<IActionResult> Login(LoginViewModel model)
@@ -62,7 +75,18 @@ namespace GameStoreWeb.Controllers
         }
 
         [HttpGet]
-        public IActionResult Register() => View();
+        public IActionResult Register()
+        {
+            if (Environment.GetEnvironmentVariable("RENDER") != null)
+            {
+                ViewBag.AuthServiceBaseUrl = Environment.GetEnvironmentVariable("AUTH_SERVICE_URL");
+            }
+            else
+            {
+                ViewBag.AuthServiceBaseUrl = _configuration["AuthService:BaseUrl"];
+            }
+            return View();
+        }
 
         [HttpPost]
         public async Task<IActionResult> Register(RegisterViewModel model)
@@ -75,7 +99,7 @@ namespace GameStoreWeb.Controllers
             if (!response.IsSuccessStatusCode)
             {
                 ModelState.AddModelError("", "Registration failed.");
-                TempData["RegistrationErrorMessage"] = "Registration failed. Please try again.";
+                TempData["Registration_error_message"] = "Registration failed. Please try again.";
                 if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
                 {
                     ModelState.AddModelError("Username", "Username already exists.");
@@ -88,6 +112,48 @@ namespace GameStoreWeb.Controllers
             }
             TempData["Registration_success_message"] = "Account created successfully, Please login.";
             return RedirectToAction("Login");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Callback(string token, string refreshToken)
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                TempData["ErrorMessage"] = "Google login failed. No token received.";
+                return RedirectToAction("Login");
+            }
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+            var username = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value
+                            ?? jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value
+                            ?? "GoogleUser";
+            // 1. Store JWT + Refresh Token in session for API calls
+            HttpContext.Session.SetString("JWToken", token);
+            HttpContext.Session.SetString("RefreshToken", refreshToken);
+            HttpContext.Session.SetString("Username", username);
+
+            // 2. Store JWT as a cookie (for Blazor or JS access)
+            HttpContext.Response.Cookies.Append("JWToken", token, new CookieOptions
+            {
+                HttpOnly = false,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(30)
+            });
+
+            // 3. Sign in user to MVC using cookie auth (so [Authorize] works)
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, username)
+                // optionally you can add role claims here
+            };
+            var claimsIdentity = new ClaimsIdentity(claims, "Cookies");
+            var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+
+            await HttpContext.SignInAsync("Cookies", claimsPrincipal);
+
+            // Redirect to home or wherever you want
+            return RedirectToAction("Index", "Home");
         }
 
         [HttpPost]

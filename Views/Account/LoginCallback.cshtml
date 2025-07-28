@@ -1,0 +1,21 @@
+﻿@{
+    ViewData["Title"] = "Google Login Callback";
+}
+
+<script>
+    // Extract query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    const refreshToken = urlParams.get("refreshToken");
+
+    if (token && refreshToken) {
+        // Store tokens (use cookies or localStorage depending on your flow)
+        localStorage.setItem("jwt", token);
+        localStorage.setItem("refreshToken", refreshToken);
+
+        // Redirect to home
+        window.location.href = "/";
+    } else {
+        document.body.innerHTML = "<h3>Login failed. No tokens received.</h3>";
+    }
+</script>

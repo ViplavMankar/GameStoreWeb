@@ -88,11 +88,19 @@ if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddHttpClient("AuthService", client =>
     {
-        client.BaseAddress = new Uri("http://localhost:5208/");
+        client.BaseAddress = new Uri("https://localhost:7168/");
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
     });
     builder.Services.AddHttpClient("GameStoreApiService", client =>
     {
-        client.BaseAddress = new Uri("http://localhost:5113/");
+        client.BaseAddress = new Uri("https://localhost:7054/");
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
     });
 }
 else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
@@ -120,10 +128,6 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
-if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
-{
-    app.MapGet("/health", () => Results.Ok("API is running"));
-}
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -143,4 +147,6 @@ app.MapBlazorHub();
 
 app.MapFallbackToPage("/marketplace", "/_Host");
 app.MapFallbackToPage("/addGame", "/_Host");
+app.MapFallbackToPage("/myCollection", "/_Host");
+app.MapFallbackToPage("/mygames", "/_Host");
 app.Run();

@@ -1,0 +1,87 @@
+﻿@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+@using System.Net.Http.Headers
+@using System.Net.Http.Json;
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="flex items-center space-x-2">
+    @for (int i = 1; i <= 5; i++)
+    {
+        var starIndex = i;
+        <span @onclick="@(() => Rate(starIndex))" class="@GetStarClass(i)"
+            style="cursor: @(IsReadOnly ? "default" : "pointer")">
+            &#9733;
+        </span>
+    }
+    <span class="text-sm text-gray-500">(@TotalVotes)</span>
+</div>
+
+@code {
+    [Parameter] public Guid GameId { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; } = false; //Allow or disallow rating game
+
+    private double AverageRating { get; set; }
+    private int? UserRating { get; set; }
+    private int TotalVotes { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRatingDataAsync();
+    }
+    private async Task LoadRatingDataAsync()
+    {
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        var result = await http.GetFromJsonAsync<RatingResponse>($"api/games/{GameId}/ratings");
+        if (result is not null)
+        {
+            AverageRating = result.AverageRating;
+            UserRating = result.UserRating;
+            TotalVotes = result.TotalVotes;
+        }
+    }
+
+    private async Task Rate(int stars)
+    {
+        if (IsReadOnly) return;
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        var response = await http.PostAsJsonAsync($"api/games/{GameId}/ratings", stars);
+        if (response.IsSuccessStatusCode)
+        {
+            var updated = await response.Content.ReadFromJsonAsync<RatingResponse>();
+            if (updated is not null)
+            {
+                AverageRating = updated.AverageRating;
+                UserRating = updated.UserRating;
+                TotalVotes = updated.TotalVotes;
+            }
+        }
+    }
+
+    private string GetStarClass(int starIndex)
+    {
+        // Highlight filled stars based on average (for display) or user's own rating if available
+        double compareValue = UserRating.HasValue ? UserRating.Value : AverageRating;
+        @* Console.WriteLine("compareValue " + compareValue); *@
+        return starIndex <= compareValue
+        ? "text-warning fs-3" // yellow, Bootstrap font size ~2xl
+        : "text-secondary fs-3"; // gray
+    }
+
+    private class RatingResponse
+    {
+        public Guid GameId { get; set; }
+        public double AverageRating { get; set; }
+        public int TotalVotes { get; set; }
+        public int? UserRating { get; set; }
+    }
+}

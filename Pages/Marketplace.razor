@@ -34,7 +34,8 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 @foreach (var game in games)
                 {
-                    <GameTile Game="game" />
+                    <GameTile Game="game" ShowBookmark="showBookmarks" AllowEditing="allowEdit"
+                        OnBookmarkToggled="OnBookmarkToggled" OnEditClicked="EditGame" />
                 }
             </div>
         }
@@ -45,7 +46,10 @@
 </AuthorizeView>
 
 @code {
-    private List<GameReadDto> games;
+    private List<GameReadDto> games = new();
+    private List<GameReadDto> savedGames = new();
+    private bool showBookmarks = true;
+    private bool allowEdit = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -53,6 +57,7 @@
         {
             var http = HttpClientFactory.CreateClient("GameStoreApiService");
             games = await http.GetFromJsonAsync<List<GameReadDto>>("api/Games/GetAll");
+            savedGames = await http.GetFromJsonAsync<List<GameReadDto>>("api/collections/GetAll");
         }
         catch (Exception ex)
         {
@@ -62,5 +67,21 @@
     private void Navigate()
     {
         Navigation.NavigateTo("/addGame");
+    }
+
+    private async Task OnBookmarkToggled((GameReadDto game, bool isNowSaved) args)
+    {
+        // Remove from collection if user unsaves it
+        var (game, isNowSaved) = args;
+        if (!isNowSaved)
+        {
+            savedGames.Remove(game);
+            StateHasChanged();
+        }
+    }
+
+    private void EditGame(Guid gameId)
+    {
+        Navigation.NavigateTo($"/mygames/edit/{gameId}");
     }
 }
