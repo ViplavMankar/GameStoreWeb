@@ -1,0 +1,66 @@
+﻿@page "/blogsite"
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<h3>All Blogs</h3>
+
+@if (_blogs is null)
+{
+    <p>Loading blogs...</p>
+}
+else if (_blogs.Count == 0)
+{
+    <p>No blogs available yet.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var blog in _blogs)
+        {
+            <li class="list-group-item">
+                <h5>@blog.Title</h5>
+                <p>
+                    <small>
+                        @if (blog.AuthorUserId is not null)
+                        {
+                            <span>Author: @blog.AuthorUsername</span>
+                        }
+                        else
+                        {
+                            <span>Author: Anonymous</span>
+                        }
+                        <span class="ms-2">Created: @blog.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")</span>
+                    </small>
+                </p>
+                <a href="/blogs/@blog.Id" class="btn btn-link">Read More</a>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<BlogDto>? _blogs;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("GameStoreApiService");
+            _blogs = await client.GetFromJsonAsync<List<BlogDto>>("api/blogs/GetAll");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Failed to load blogs: " + ex.Message);
+            _blogs = new List<BlogDto>();
+        }
+    }
+    public class BlogDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public Guid? AuthorUserId { get; set; }
+        public string? AuthorUsername { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+}
