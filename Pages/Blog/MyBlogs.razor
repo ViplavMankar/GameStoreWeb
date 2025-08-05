@@ -1,0 +1,97 @@
+﻿@page "/myblogs"
+@using Microsoft.JSInterop;
+@inject IJSRuntime JS
+
+@inject IHttpClientFactory HttpClientFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using System.Net.Http.Headers
+@using GameStoreWeb.Components;
+
+<h3>MyBlogs</h3>
+
+<ButtonComponentBlazor Type="button" Value="➕ Create Blog" OnClickUrlString="/addblog" BgColor="48A6A7"
+    OnMouseEnterBgColor="006A71" AdditionalStyleTags="margin-left: 50px;margin-right: 50px;" />
+
+@if (blogs == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!blogs.Any())
+{
+    <p>You haven't written any blogs yet.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var blog in blogs)
+        {
+            <li class="list-group-item">
+                <h5>@blog.Title</h5>
+                <p class="text-muted">Created: @blog.CreatedAt.ToString("g")</p>
+                <button @onclick="@(() => EditBlog(blog.Id))" class="btn btn-sm btn-primary me-2">Edit</button>
+                <button @onclick="@(() => DeleteBlog(blog.Id))" class="btn btn-sm btn-danger">Delete</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<BlogDto> blogs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        blogs = await http.GetFromJsonAsync<List<BlogDto>>($"api/blogs/Mine");
+    }
+
+    private void EditBlog(Guid id)
+    {
+        Navigation.NavigateTo($"/editblog/{id}");
+    }
+
+    private async Task DeleteBlog(Guid id)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete this blog?");
+        if (!confirmed) return;
+
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        var response = await http.DeleteAsync($"api/blogs/Delete/{id}");
+        if (response.IsSuccessStatusCode)
+        {
+            blogs = blogs.Where(b => b.Id != id).ToList();
+            StateHasChanged();
+        }
+        else
+        {
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("alert", $"Error deleting blog: {errorMessage}");
+            Console.WriteLine("Failed to delete blog");
+        }
+    }
+
+    public class BlogDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public Guid? AuthorUserId { get; set; }
+        public string? AuthorUsername { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+}

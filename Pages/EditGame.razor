@@ -12,60 +12,67 @@
 
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Authorization
 
 <h2 class="mb-4">Edit Game</h2>
 
-@if (isLoading)
-{
-    <div class="text-center">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-        <p>Loading game details...</p>
-    </div>
-}
-else if (errorMessage != null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
-else if (game == null)
-{
-    <div class="alert alert-warning">Game not found.</div>
-}
-else
-{
-    <EditForm Model="game" OnValidSubmit="UpdateGame">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
+<AuthorizeView>
+    <Authorized Context="authContext">
+        @if (isLoading)
+        {
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading game details...</p>
+            </div>
+        }
+        else if (errorMessage != null)
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+        else if (game == null)
+        {
+            <div class="alert alert-warning">Game not found.</div>
+        }
+        else
+        {
+            <EditForm Model="game" OnValidSubmit="UpdateGame">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
 
-        <div class="mb-3">
-            <label class="form-label">Title</label>
-            <InputText class="form-control" @bind-Value="game.Title" />
-        </div>
+                <div class="mb-3">
+                    <label class="form-label">Title</label>
+                    <InputText class="form-control" @bind-Value="game.Title" />
+                </div>
 
-        <div class="mb-3">
-            <label class="form-label">Description</label>
-            <InputTextArea class="form-control" @bind-Value="game.Description" />
-        </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <InputTextArea class="form-control" @bind-Value="game.Description" />
+                </div>
 
-        <div class="mb-3">
-            <label class="form-label">Thumbnail URL</label>
-            <InputText class="form-control" @bind-Value="game.ThumbnailUrl" />
-        </div>
+                <div class="mb-3">
+                    <label class="form-label">Thumbnail URL</label>
+                    <InputText class="form-control" @bind-Value="game.ThumbnailUrl" />
+                </div>
 
-        <div class="mb-3">
-            <label class="form-label">Playable Game URL</label>
-            <InputText class="form-control" @bind-Value="game.GameUrl" />
-        </div>
+                <div class="mb-3">
+                    <label class="form-label">Playable Game URL</label>
+                    <InputText class="form-control" @bind-Value="game.GameUrl" />
+                </div>
 
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Save Changes</button>
-            <button type="button" class="btn btn-danger" @onclick="DeleteGame">Delete Game</button>
-            <button type="button" class="btn btn-secondary" @onclick="() => GoBack()">Cancel</button>
-        </div>
-    </EditForm>
-}
-
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-danger" @onclick="DeleteGame">Delete Game</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => GoBack()">Cancel</button>
+                </div>
+            </EditForm>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>You must <a href="/Account/Login">log in</a>.</p>
+    </NotAuthorized>
+</AuthorizeView>
 @code {
     [Parameter] public Guid GameId { get; set; }
     private GameEditDto? game;
