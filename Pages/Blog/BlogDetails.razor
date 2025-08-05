@@ -1,0 +1,52 @@
+﻿@page "/blogs/{Id:guid}"
+
+@inject IHttpClientFactory HttpClientFactory
+@using GameStoreWeb.Models
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Authorization
+
+<h3>@blog?.Title</h3>
+
+<AuthorizeView>
+    <Authorized>
+        @if (blog is null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <div class="text-muted">By @blog.AuthorUsername on @blog.CreatedAt.ToString("yyyy-MM-dd")</div>
+            <hr />
+            <div class="mt-3" @onclick:stopPropagation="true" @onclick:preventDefault="true">
+                @((MarkupString)blog.Content)
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>You must <a href="/Account/Login">log in</a>.</p>
+    </NotAuthorized>
+</AuthorizeView>
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private BlogReadUserDto? blog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var client = HttpClientFactory.CreateClient("GameStoreApiService");
+        blog = await client.GetFromJsonAsync<BlogReadUserDto>($"api/blogs/Get/{Id}");
+    }
+
+    public class BlogReadUserDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public Guid? AuthorUserId { get; set; }
+        public string AuthorUsername { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+}

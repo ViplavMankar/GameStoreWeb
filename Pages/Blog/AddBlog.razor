@@ -28,6 +28,9 @@
         <h5>@_blogTitle</h5>
         <div>@((MarkupString)_blogContent)</div>
     </Authorized>
+    <NotAuthorized>
+        <p>You must <a href="/Account/Login">log in</a>.</p>
+    </NotAuthorized>
 </AuthorizeView>
 
 

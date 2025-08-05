@@ -1,4 +1,4 @@
-window.initTinyMCE = (selector) => {
+window.initTinyMCE = (selector,content) => {
     console.log("Initializing TinyMCE for", selector);
     if(tinymce.get(selector)){
         tinymce.remove(`#${selector}`);
@@ -17,6 +17,11 @@ window.initTinyMCE = (selector) => {
                  'alignright alignjustify | bullist numlist outdent indent | ' +
                  'removeformat | help',
         setup: (editor) => {
+            editor.on('init', () => {
+                if (content) {
+                    editor.setContent(content); // ✅ Set initial content here
+                }
+            });
             editor.on('change', () => {
                 editor.save();
             });

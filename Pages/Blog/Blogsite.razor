@@ -1,42 +1,52 @@
 ﻿@page "/blogsite"
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Authorization
 
 <h3>All Blogs</h3>
 
-@if (_blogs is null)
-{
-    <p>Loading blogs...</p>
-}
-else if (_blogs.Count == 0)
-{
-    <p>No blogs available yet.</p>
-}
-else
-{
-    <ul class="list-group">
-        @foreach (var blog in _blogs)
+<AuthorizeView>
+    <Authorized>
+
+        @if (_blogs is null)
         {
-            <li class="list-group-item">
-                <h5>@blog.Title</h5>
-                <p>
-                    <small>
-                        @if (blog.AuthorUserId is not null)
-                        {
-                            <span>Author: @blog.AuthorUsername</span>
-                        }
-                        else
-                        {
-                            <span>Author: Anonymous</span>
-                        }
-                        <span class="ms-2">Created: @blog.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")</span>
-                    </small>
-                </p>
-                <a href="/blogs/@blog.Id" class="btn btn-link">Read More</a>
-            </li>
+            <p>Loading blogs...</p>
         }
-    </ul>
-}
+        else if (_blogs.Count == 0)
+        {
+            <p>No blogs available yet.</p>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var blog in _blogs)
+                {
+                    <li class="list-group-item">
+                        <a href="@($"/blogs/{blog.Id}")">@blog.Title</a>
+                        <p>
+                            <small>
+                                @if (blog.AuthorUserId is not null)
+                                {
+                                    <span>Author: @blog.AuthorUsername</span>
+                                }
+                                else
+                                {
+                                    <span>Author: Anonymous</span>
+                                }
+                                <span class="ms-2">Created: @blog.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")</span>
+                            </small>
+                        </p>
+                        <a href="/blogs/@blog.Id" class="btn btn-link">Read More</a>
+                    </li>
+                }
+            </ul>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>You must <a href="/Account/Login">log in</a>.</p>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
     private List<BlogDto>? _blogs;

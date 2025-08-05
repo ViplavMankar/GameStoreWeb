@@ -14,25 +14,32 @@
 
 <h2 class="text-2xl font-bold mb-4">My Collection</h2>
 
-@if (isLoading)
-{
-    <p>Loading your saved games...</p>
-}
-else if (games == null || !games.Any())
-{
-    <p>You haven't saved any games yet. Go to the <a href="/marketplace" class="text-blue-600 underline">Marketplace</a> to
-        add some!</p>
-}
-else
-{
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        @foreach (var game in games)
+<AuthorizeView>
+    <Authorized>
+        @if (isLoading)
         {
-            <GameTile Game="game" ShowBookmark="showBookmarks" OnBookmarkToggled="OnBookmarkToggled" />
+            <p>Loading your saved games...</p>
         }
-    </div>
-}
-
+        else if (games == null || !games.Any())
+        {
+            <p>You haven't saved any games yet. Go to the <a href="/marketplace"
+                    class="text-blue-600 underline">Marketplace</a> to
+                add some!</p>
+        }
+        else
+        {
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                @foreach (var game in games)
+                {
+                    <GameTile Game="game" ShowBookmark="showBookmarks" OnBookmarkToggled="OnBookmarkToggled" />
+                }
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>You must <a href="/Account/Login">log in</a>.</p>
+    </NotAuthorized>
+</AuthorizeView>
 @code {
     private List<GameReadDto> games = new();
     private bool isLoading = true;
