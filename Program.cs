@@ -125,6 +125,12 @@ else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
             ? new Uri(Environment.GetEnvironmentVariable("GAMESTORE_API_URL"))
             : throw new Exception("Environment variable not set.");
     });
+    builder.Services.AddHttpClient("PaymentApiService", client =>
+    {
+        client.BaseAddress = Environment.GetEnvironmentVariable("PAYMENT_API_URL") != null
+            ? new Uri(Environment.GetEnvironmentVariable("PAYMENT_API_URL"))
+            : throw new Exception("Environment variable not set.");
+    });
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
