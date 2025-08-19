@@ -1,0 +1,41 @@
+﻿@namespace GameStoreWeb.Pages.Shared
+@inherits LayoutComponentBase
+
+<div class="main-layout">
+    <nav class="navbar">
+        <a href="/">Home</a>
+        <a href="/blogsite">Blogs</a>
+        <a href="/myblogs">My Blogs</a>
+    </nav>
+
+    <main class="content px-4">
+        @Body
+    </main>
+</div>
+
+<style>
+    .main-layout {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .navbar {
+        background-color: #20232a;
+        padding: 10px;
+        color: white;
+    }
+
+    .navbar a {
+        color: white;
+        margin-right: 15px;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    .navbar a:hover {
+        text-decoration: underline;
+    }
+
+    .content {
+        margin-top: 20px;
+    }
+</style>

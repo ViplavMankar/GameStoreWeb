@@ -102,6 +102,14 @@ if (builder.Environment.IsDevelopment())
     {
         ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
     });
+    builder.Services.AddHttpClient("PaymentApiService", client =>
+    {
+        client.BaseAddress = new Uri("https://localhost:7115/");
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+    });
 }
 else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
 {
@@ -115,6 +123,12 @@ else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
     {
         client.BaseAddress = Environment.GetEnvironmentVariable("GAMESTORE_API_URL") != null
             ? new Uri(Environment.GetEnvironmentVariable("GAMESTORE_API_URL"))
+            : throw new Exception("Environment variable not set.");
+    });
+    builder.Services.AddHttpClient("PaymentApiService", client =>
+    {
+        client.BaseAddress = Environment.GetEnvironmentVariable("PAYMENT_API_URL") != null
+            ? new Uri(Environment.GetEnvironmentVariable("PAYMENT_API_URL"))
             : throw new Exception("Environment variable not set.");
     });
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
@@ -149,4 +163,6 @@ app.MapFallbackToPage("/marketplace", "/_Host");
 app.MapFallbackToPage("/addGame", "/_Host");
 app.MapFallbackToPage("/myCollection", "/_Host");
 app.MapFallbackToPage("/mygames", "/_Host");
+app.MapFallbackToPage("/addblog", "/_Host");
+app.MapFallbackToPage("/blogsite", "/_Host");
 app.Run();

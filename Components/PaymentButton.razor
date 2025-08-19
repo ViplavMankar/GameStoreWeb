@@ -1,0 +1,145 @@
+﻿@inject HttpClient Http
+@using Microsoft.JSInterop;
+@inject IJSRuntime JS
+@using System.Text.Json;
+@using Microsoft.AspNetCore.Components.Web
+@inject IHttpClientFactory HttpClientFactory
+@using GameStoreWeb.Models
+
+<button class="btn btn-primary" @onclick="StartPayment" disabled="@IsBusy">
+    @(IsBusy ? "Processing..." : $"Buy ₹{Amount:F2}")
+</button>
+
+@code {
+    // INPUTS
+    [Parameter] public Guid GameId { get; set; } // NEW: authoritative server pricing
+    [Parameter] public decimal Amount { get; set; } = 0m; // shown on button only (optional)
+    [Parameter] public string Currency { get; set; } = "INR";
+    [Parameter] public EventCallback<PaymentResultDto> OnCompleted { get; set; } // NEW
+
+    private DotNetObjectReference<PaymentButton>? _objRef;
+    private bool IsBusy;
+
+    protected override void OnInitialized() => _objRef = DotNetObjectReference.Create(this);
+    public void Dispose() => _objRef?.Dispose();
+
+    private async Task StartPayment()
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        try
+        {
+            // 1) Create order on backend (server computes price from GameId)
+            var http = HttpClientFactory.CreateClient("PaymentApiService");
+
+            var createReq = new { amount = Amount, currency = Currency }; // no amount from client
+            var resp = await http.PostAsJsonAsync("/api/BankPayment/process", createReq);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var txt = await resp.Content.ReadAsStringAsync();
+                Console.Error.WriteLine($"Create order failed: {txt}");
+                await NotifyCompleted(false, "create-failed");
+                return;
+            }
+
+            var data = await resp.Content.ReadFromJsonAsync<CreateOrderResponse>();
+            if (data is null)
+            {
+                Console.Error.WriteLine("Empty response creating order");
+                await NotifyCompleted(false, "create-empty");
+                return;
+            }
+
+            // 2) Open Razorpay Checkout
+            var options = new
+            {
+                key = data.key, // publishable
+                amount = data.amount, // in paise
+                currency = data.currency,
+                name = "GameStore",
+                description = "Purchase",
+                order_id = data.orderId,
+                // You can pass notes/receipt/internal order id to help correlate
+                @* notes = new { gameId = GameId.ToString(), internalOrderId = data.internalOrderId } *@
+            };
+
+            await JS.InvokeVoidAsync("razorpayInterop.openCheckout", _objRef, options);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"StartPayment error: {ex}");
+            await NotifyCompleted(false, "exception");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    // Called by JS on success
+    [JSInvokable]
+    public async Task OnPaymentSuccess(JsonElement response)
+    {
+        try
+        {
+            var paymentId = response.GetProperty("razorpay_payment_id").GetString();
+            var orderId = response.GetProperty("razorpay_order_id").GetString();
+            var signature = response.GetProperty("razorpay_signature").GetString();
+
+            // 3) Verify on server (authoritative)
+            var http = HttpClientFactory.CreateClient("PaymentApiService");
+            var verifyPayload = new
+            {
+                razorpay_payment_id = paymentId,
+                razorpay_order_id = orderId,
+                razorpay_signature = signature
+            };
+            var verifyResp = await http.PostAsJsonAsync("/api/BankPayment/verify", verifyPayload);
+            if (!verifyResp.IsSuccessStatusCode)
+            {
+                var txt = await verifyResp.Content.ReadAsStringAsync();
+                Console.Error.WriteLine("Payment verification failed: " + txt);
+                await NotifyCompleted(false, "verify-failed");
+                return;
+            }
+
+            // 4) Add to collection (only after verification succeeds)
+            var addResp = await http.PostAsJsonAsync("/api/collections/Add", new { gameId = GameId });
+            if (!addResp.IsSuccessStatusCode)
+            {
+                var txt = await addResp.Content.ReadAsStringAsync();
+                Console.Error.WriteLine("AddToCollection failed: " + txt);
+                // still consider payment success, but surface collection issue
+                await NotifyCompleted(true, "payment-verified-collection-failed");
+                return;
+            }
+
+            await NotifyCompleted(true, "payment-verified-and-collected");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("OnPaymentSuccess error: " + ex);
+            await NotifyCompleted(false, "success-handler-exception");
+        }
+    }
+
+    // Called by JS on failure (optional)
+    [JSInvokable]
+    public async Task OnPaymentFailed(JsonElement resp)
+    {
+        Console.Error.WriteLine("Payment failed: " + resp.ToString());
+        await NotifyCompleted(false, "checkout-failed");
+    }
+
+    private async Task NotifyCompleted(bool success, string message)
+    => await OnCompleted.InvokeAsync(new PaymentResultDto { Success = success, Message = message });
+
+    private class CreateOrderResponse
+    {
+        public string orderId { get; set; } = default!;
+        public string key { get; set; } = default!;
+        public int amount { get; set; } // paise
+        public string currency { get; set; } = "INR";
+        @* public string? internalOrderId { get; set; } // optional, if your server returns it *@
+    }
+}

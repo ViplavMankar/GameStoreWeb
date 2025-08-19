@@ -1,0 +1,112 @@
+﻿@page "/editblog/{Id:guid}"
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+@using Microsoft.JSInterop;
+@inject IJSRuntime JS
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Forms
+
+<h3>EditBlog</h3>
+
+@if (blog == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <EditForm Model="blog" OnValidSubmit="UpdateBlog">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div>
+            <label>Title:</label>
+            <InputText @bind-Value="blog.Title" class="form-control" />
+        </div>
+
+        <div>
+            <label>Content:</label>
+            <div id="editor"></div>
+        </div>
+
+        <button class="btn btn-primary mt-2" type="submit">Save</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+    private BlogReadUserDto blog;
+    private BlogEditDto blogEditDto;
+    private bool _editorInitialized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        blog = await http.GetFromJsonAsync<BlogReadUserDto>($"/api/blogs/Get/{Id}");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        @* Console.WriteLine($"Initializing TinyMCE with content: {blog.Content}"); *@
+        if (!_editorInitialized && blog != null)
+        {
+            await JS.InvokeVoidAsync("initTinyMCE", "editor", blog.Content);
+            _editorInitialized = true;
+        }
+    }
+
+    private async Task UpdateBlog()
+    {
+        blog.Content = await JS.InvokeAsync<string>("getTinyMCEContent", "editor");
+
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        blogEditDto = new BlogEditDto
+        {
+            Title = blog.Title,
+            Content = blog.Content
+        };
+
+        var response = await http.PutAsJsonAsync($"/api/blogs/edit/{Id}", blogEditDto);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/myblogs");
+        }
+        else
+        {
+            Console.WriteLine("Error updating blog");
+        }
+    }
+
+    public class BlogEditDto
+    {
+        public string Title { get; set; }
+        public string Content { get; set; }
+    }
+
+    public class BlogReadUserDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; }
+        public string Content { get; set; }
+        public Guid? AuthorUserId { get; set; }
+        public string? AuthorUsername { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+}

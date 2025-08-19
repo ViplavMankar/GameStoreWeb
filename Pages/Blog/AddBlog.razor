@@ -1,0 +1,87 @@
+﻿@page "/addblog"
+@using Microsoft.JSInterop;
+@inject IJSRuntime JS
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web;
+
+<h3> Write a Blog</h3>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="mb-3">
+            <label for="blogTitle" class="form-label">Title</label>
+            <input type="text" id="blogTitle" class="form-control" @bind="_blogTitle" />
+        </div>
+        <div class="mb-3">
+            <label for="blogEditor" class="form-label">Content</label>
+            <textarea id="blogEditor"></textarea>
+        </div>
+
+        <button @onclick="SaveBlog" class="btn btn-primary">Save Blog</button>
+
+        <hr />
+        <h4>Preview</h4>
+        <h5>@_blogTitle</h5>
+        <div>@((MarkupString)_blogContent)</div>
+    </Authorized>
+    <NotAuthorized>
+        <p>You must <a href="/Account/Login">log in</a>.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+
+@code {
+    private string _blogTitle = string.Empty;
+    private string _blogContent = string.Empty;
+    private bool _editorInitialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initTinyMCE", "blogEditor");
+            _editorInitialized = true;
+        }
+    }
+    private async Task SaveBlog()
+    {
+        if (_editorInitialized)
+        {
+            _blogContent = await JS.InvokeAsync<string>("getTinyMCEContent", "blogEditor");
+            var blog = new
+            {
+                Title = _blogTitle,
+                Content = _blogContent
+            };
+            try
+            {
+                var http = HttpClientFactory.CreateClient("GameStoreApiService");
+
+                var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+                if (!string.IsNullOrEmpty(token))
+                {
+                    http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                }
+                var response = await http.PostAsJsonAsync("api/Blogs/Create", blog);
+                if (response.IsSuccessStatusCode)
+                {
+                    Navigation.NavigateTo("/blogsite");
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Error saving blog: {error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception while saving blog: {ex.Message}");
+            }
+        }
+    }
+}
