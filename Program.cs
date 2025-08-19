@@ -102,6 +102,14 @@ if (builder.Environment.IsDevelopment())
     {
         ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
     });
+    builder.Services.AddHttpClient("PaymentApiService", client =>
+    {
+        client.BaseAddress = new Uri("https://localhost:7115/");
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+    });
 }
 else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
 {

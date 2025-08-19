@@ -35,7 +35,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 @foreach (var game in games)
                 {
-                    <GameTile Game="game" ShowBookmark="showBookmarks" AllowEditing="allowEdit" OnEditClicked="EditGame" />
+                    <GameTile Game="game" IsInCollection="false" AllowEditing="allowEdit" OnEditClicked="EditGame" />
                 }
             </div>
         }
@@ -47,7 +47,6 @@
 
 @code {
     private List<GameReadDto>? games;
-    private bool showBookmarks = false;
     private bool allowEdit = true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
