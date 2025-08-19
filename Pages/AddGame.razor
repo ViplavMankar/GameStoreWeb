@@ -8,9 +8,12 @@
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
 
 @using GameStoreWeb.Models
 @using GameStoreWeb.Components
+
 
 <h2>Add New Game</h2>
 
@@ -36,6 +39,14 @@
             <textarea id="thumbnailurl" @bind="GameThumbnailUrl" class="form-control"></textarea>
         </div>
 
+        <div class="mb-4">
+            <label for="price">Price (INR) — leave blank or 0 for Free:</label>
+            <InputNumber @bind-Value="PriceRupees" id="price" class="form-control" placeholder="e.g. 49.99" />
+            <small class="form-text text-muted">Enter rupees (decimal allowed). We'll convert it to paise
+                server-side.</small>
+        </div>
+        <div>@(PriceRupees.HasValue && PriceRupees.Value > 0 ? $"₹{PriceRupees.Value:F2}" : "Free")</div>
+
         <button class="btn btn-success" @onclick="SaveGame">Save</button>
     </Authorized>
     <NotAuthorized>
@@ -47,6 +58,9 @@
     private string GameUrl;
     private string GameDescription;
     private string GameThumbnailUrl;
+
+    // Price in rupees as user input. Nullable => blank means free.
+    private decimal? PriceRupees;
 
     private async Task SaveGame()
     {
@@ -69,10 +83,27 @@
                 ThumbnailUrl = GameThumbnailUrl
             };
 
+            // convert rupees -> paise
+            long pricePaise = 0;
+            if (PriceRupees.HasValue && PriceRupees.Value > 0m)
+            {
+                pricePaise = (long)Math.Round(PriceRupees.Value * 100m);
+            }
+
             var response = await http.PostAsJsonAsync("api/Games/Create", newGame);
 
             if (response.IsSuccessStatusCode)
             {
+                var created = await response.Content.ReadFromJsonAsync<GameDto>();
+                if (created != null && pricePaise > 0)
+                {
+                    var priceResp = await http.PutAsJsonAsync($"api/games/{created.Id}/price",
+                    new { PricePaise = pricePaise, Currency = "INR" });
+                    if (!priceResp.IsSuccessStatusCode)
+                    {
+                        // log warning; optionally show message to user
+                    }
+                }
                 Navigation.NavigateTo("/marketplace");
                 Console.WriteLine("Game added successfully.");
             }
@@ -87,5 +118,18 @@
             Logger.LogError(ex, "Error saving game.");
             Console.WriteLine("An error occurred while saving the game: " + ex.Message);
         }
+    }
+
+    private class GameDto
+    {
+        public Guid Id { get; set; }
+        [Required]
+        public string Title { get; set; } = string.Empty;
+        [Required]
+        public string Description { get; set; } = string.Empty;
+        [Required]
+        public string ThumbnailUrl { get; set; } = string.Empty;
+        [Required]
+        public string GameUrl { get; set; } = string.Empty;
     }
 }

@@ -11,7 +11,7 @@
 @using GameStoreWeb.Models
 @using GameStoreWeb.Components
 <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition duration-300 relative">
-    @if(ShowBookmark)
+    @* @if(ShowBookmark)
     {
         <button @onclick="ToggleBookmark" class="absolute top-2 right-2 text-gray-700 hover:text-blue-500">
             @if (isSavedValue)
@@ -23,11 +23,11 @@
                 <i class="far fa-bookmark"></i> <!-- Outline icon -->
             }
         </button>
-    }
+    } *@
     @if (AllowEditing)
     {
         <button class="btn btn-sm btn-warning position-absolute top-0 end-0 m-2"
-                @onclick="() => OnEditClicked.InvokeAsync(Game.Id)">
+            @onclick="() => OnEditClicked.InvokeAsync(Game.Id)">
             <i class="bi bi-pencil-square"></i>
         </button>
     }
@@ -39,8 +39,48 @@
         <h3 class="text-lg font-semibold">@Game.Title</h3>
         <p class="text-sm text-gray-600 truncate">@Game.Description</p>
         <StarRating GameId="@Game.Id" IsReadOnly="false" />
-        <ButtonComponentBlazor Type="button" Value="Play Game" OnClickUrlString="@Game.GameUrl" BgColor="48A6A7"
-            OnMouseEnterBgColor="006A71" AdditionalStyleTags="margin-left: 50px;margin-right: 50px;" />
+        @* <ButtonComponentBlazor Type="button" Value="Play Game" OnClickUrlString="@Game.GameUrl" BgColor="48A6A7"
+            OnMouseEnterBgColor="006A71" AdditionalStyleTags="margin-left: 50px;margin-right: 50px;" /> *@
+        <div class="d-flex align-items-center gap-2 mt-2">
+            @if (!IsPriceLoaded)
+            {
+                <span class="text-muted">Loading price...</span>
+            }
+            else if (IsOwned)
+            {
+                @* If this tile is shown inside the user's collection page, show Play button *@
+                @if (IsInCollection)
+                {
+                    <button class="btn btn-success btn-sm" @onclick="PlayGame" disabled="@IsBusy">
+                        @((IsBusy) ? "Launching..." : "Play Game")
+                    </button>
+                }
+                else
+                {
+                    <span class="badge bg-primary align-self-center">In your collection</span>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="GoToMyCollection">Go to My Collection</button>
+                }
+            }
+            else
+            {
+                @if (IsPaid)
+                {
+                    <strong class="text-primary me-2 align-self-center">@PriceLabel</strong>
+                    @* NOTE: PaymentButton needs an OnCompleted callback to notify success *@
+                    <PaymentButton Amount="@PriceRupees" Currency="@PriceCurrency" GameId="@Game.Id"
+                        OnCompleted="@( (PaymentResultDto r) => OnPaymentCompleted(r) )" />
+                }
+                else
+                {
+                    <span class="badge bg-success align-self-center">Free</span>
+                    <button class="btn btn-primary btn-sm" @onclick="AddToCollection" disabled="@IsBusy">
+                        @((IsBusy) ? "Adding..." : "Add to Collection")
+                    </button>
+                }
+            }
+        </div>
+
+        @* Removed: Play button on marketplace. Users can play only from My Collection. *@
     </div>
 </div>
 
@@ -48,20 +88,35 @@
     [Parameter]
     public GameReadDto Game { get; set; }
 
-    [Parameter]
-    public bool ShowBookmark {get; set;} = true;
+    @* [Parameter]
+    public bool ShowBookmark { get; set; } = true; *@
 
     [Parameter]
-    public bool AllowEditing {get; set;} = false;
+    public bool AllowEditing { get; set; } = false;
+
+    @* [Parameter]
+    public EventCallback<(GameReadDto, bool)> OnBookmarkToggled { get; set; } *@
 
     [Parameter]
-    public EventCallback<(GameReadDto, bool)> OnBookmarkToggled {get; set;}
-
+    public bool IsInCollection { get; set; } = false;
     [Parameter]
-    public EventCallback<Guid> OnEditClicked {get; set;}
+    public EventCallback<Guid> OnEditClicked { get; set; }
 
-    private bool isSavedValue;
     private string userId;
+
+    // ownership / price state
+    private bool IsOwned { get; set; } = false;
+
+    private bool IsPriceLoaded { get; set; } = false;
+    private bool IsPaid { get; set; } = false;
+    private long PricePaise { get; set; } = 0;
+    private decimal PriceRupees { get; set; } = 0m;
+    private string PriceCurrency { get; set; } = "INR";
+    private string PriceLabel => PriceCurrency.ToUpperInvariant() == "INR"
+    ? $"₹{PriceRupees:F2}"
+    : $"{PriceCurrency} {PriceRupees:F2}";
+
+    private bool IsBusy { get; set; } = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -69,9 +124,9 @@
         var user = authState.User;
         userId = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
 
-        if(firstRender)
+        if (firstRender)
         {
-            if(!string.IsNullOrEmpty(userId))
+            if (!string.IsNullOrEmpty(userId))
             {
                 var http = HttpClientFactory.CreateClient("GameStoreApiService");
                 var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
@@ -82,13 +137,74 @@
                 }
 
                 var result = await http.GetFromJsonAsync<SavedResponse>($"/api/collections/exists/{Game.Id}");
-                isSavedValue = result?.isSaved ?? false;
+
+                // fetch price (public endpoint, no auth required)
+                await Task.WhenAll(LoadOwnershipAsync(), LoadPriceAsync());
+
                 StateHasChanged();
             }
         }
     }
 
-    private async Task ToggleBookmark()
+    private async Task LoadOwnershipAsync()
+    {
+        try
+        {
+            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+            if (!string.IsNullOrEmpty(token))
+                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            // your existing endpoint
+            var result = await http.GetFromJsonAsync<SavedResponse>($"/api/collections/exists/{Game.Id}");
+            IsOwned = result?.isSaved ?? false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ownership fetch failed for {Game.Id}: {ex.Message}");
+            IsOwned = false;
+        }
+    }
+
+    private async Task LoadPriceAsync()
+    {
+        try
+        {
+            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            // public price endpoint typically doesn't need auth, but if it does you can set token as above
+            var priceResult = await http.GetFromJsonAsync<GetPriceResult>($"/api/games/{Game.Id}/price?currency=INR");
+
+            if (priceResult != null && priceResult.IsPaid)
+            {
+                IsPaid = true;
+                PricePaise = priceResult.PricePaise;
+                PriceCurrency = priceResult.Currency ?? "INR";
+                PriceRupees = PricePaise / 100m;
+            }
+            else
+            {
+                IsPaid = false;
+                PricePaise = 0;
+                PriceRupees = 0m;
+                PriceCurrency = priceResult?.Currency ?? "INR";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load price for game {Game.Id}: {ex.Message}");
+            // fallback: treat as free if failure
+            IsPaid = false;
+            PricePaise = 0;
+            PriceRupees = 0m;
+            PriceCurrency = "INR";
+        }
+        finally
+        {
+            IsPriceLoaded = true;
+        }
+    }
+
+    @* private async Task ToggleBookmark()
     {
         var http = HttpClientFactory.CreateClient("GameStoreApiService");
         var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
@@ -97,25 +213,121 @@
         {
             http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
-        if(string.IsNullOrEmpty(userId)) return;
+        if (string.IsNullOrEmpty(userId)) return;
 
-        if(isSavedValue)
+        if (isSavedValue)
         {
             await http.DeleteAsync($"/api/collections/Remove/{Game.Id}");
             isSavedValue = false;
         }
         else
         {
-            await http.PostAsJsonAsync($"/api/collections/Add",new {userId, gameId = Game.Id});
+            await http.PostAsJsonAsync($"/api/collections/Add", new { userId, gameId = Game.Id });
             isSavedValue = true;
         }
 
         // Notify parent (Marketplace or My Collection)
         await OnBookmarkToggled.InvokeAsync((Game, isSavedValue));
+    } *@
+
+    private async Task AddToCollection()
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            NavManager.NavigateTo("/Account/Login?returnUrl=/marketplace");
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+            if (!string.IsNullOrEmpty(token))
+                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var resp = await http.PostAsJsonAsync($"/api/collections/Add", new { userId, gameId = Game.Id });
+            if (resp.IsSuccessStatusCode)
+            {
+                IsOwned = true;
+                // optional: navigate straight to My Collection so user can play
+                NavManager.NavigateTo("/myCollection");
+            }
+            else
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Console.WriteLine($"AddToCollection failed: {resp.StatusCode} {err}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"AddToCollection error: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
+
+    private async Task OnPaymentCompleted(PaymentResultDto result)
+    {
+        // This callback is invoked by PaymentButton after successful Razorpay payment verification.
+        if (!result.Success)
+            return;
+
+        // Add to collection automatically
+        await AddToCollection();
+    }
+
+    private async Task PlayGame()
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            NavManager.NavigateTo("/Account/Login?returnUrl=/myCollection");
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+
+            // Optional: tell server user started playing (analytics / play count / entitlement check)
+            try
+            {
+                var http = HttpClientFactory.CreateClient("GameStoreApiService");
+                var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+                if (!string.IsNullOrEmpty(token))
+                    http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                // Record play start (optional endpoint)
+                @* await http.PostAsJsonAsync($"/api/games/{Game.Id}/playstart", new { }); *@
+            }
+            catch (Exception ex)
+            {
+                // ignore analytics errors, but log them
+                Console.WriteLine($"Play tracking failed: {ex.Message}");
+            }
+
+            // Open the game's URL in a new tab (so the marketplace remains open)
+            await JS.InvokeVoidAsync("open", Game.GameUrl, "_blank");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void GoToMyCollection() => NavManager.NavigateTo("/myCollection");
 
     private class SavedResponse
     {
-        public bool isSaved {get; set;}
+        public bool isSaved { get; set; }
+    }
+    private class GetPriceResult
+    {
+        public Guid GameId { get; set; }
+        public string Currency { get; set; } = "INR";
+        public bool IsPaid { get; set; }
+        public long PricePaise { get; set; }
     }
 }
