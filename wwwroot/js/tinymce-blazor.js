@@ -1,6 +1,6 @@
-window.initTinyMCE = (selector,content) => {
+window.initTinyMCE = (selector, content) => {
     console.log("Initializing TinyMCE for", selector);
-    if(tinymce.get(selector)){
+    if (tinymce.get(selector)) {
         tinymce.remove(`#${selector}`);
     }
     tinymce.init({
@@ -13,9 +13,9 @@ window.initTinyMCE = (selector,content) => {
             'insertdatetime media table paste code help wordcount'
         ],
         toolbar: 'undo redo | formatselect | ' +
-                 'bold italic backcolor | alignleft aligncenter ' +
-                 'alignright alignjustify | bullist numlist outdent indent | ' +
-                 'removeformat | help',
+            'bold italic backcolor | alignleft aligncenter ' +
+            'alignright alignjustify | bullist numlist outdent indent | ' +
+            'removeformat | help',
         setup: (editor) => {
             editor.on('init', () => {
                 if (content) {
@@ -31,9 +31,15 @@ window.initTinyMCE = (selector,content) => {
 
 window.getTinyMCEContent = (selector) => {
     const editor = tinymce.get(selector);
-    if(editor){
+    if (editor) {
         editor.save(); // Ensure the content is saved before retrieving
         return editor.getContent();
     }
     return '';
+};
+
+window.setTinyMCEContent = (id, html) => {
+    const ed = tinymce.get(id);
+    if (!ed) return;
+    ed.setContent(html || "");
 };
