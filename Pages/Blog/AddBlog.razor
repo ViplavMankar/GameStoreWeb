@@ -112,7 +112,7 @@
             var req = new RewriteRequest
             {
                 Input = _rewriteExisting ? currentHtml : null,
-                Prompt = "/no think" + _aiPrompt,
+                Prompt = "/no think " + _aiPrompt,
                 Audience = _aiAudience,
                 Tone = _aiTone,
                 TargetWordCount = _aiTargetWordCount,

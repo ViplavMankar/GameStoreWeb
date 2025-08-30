@@ -24,3 +24,12 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+.file-input {
+  background-color: #60b5ff; /* blue background */
+  color: white; /* button text color */
+  border: 1px solid #007acc; /* border */
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}

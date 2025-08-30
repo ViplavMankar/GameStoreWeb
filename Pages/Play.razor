@@ -1,0 +1,62 @@
+﻿@page "/games/play/{GameId:guid}"
+@inject IHttpClientFactory HttpClientFactory
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject NavigationManager NavManager
+@using GameStoreWeb.Models
+@using System.Net.Http.Headers;
+@inject IConfiguration Config
+
+@code {
+    [Parameter] public Guid GameId { get; set; }
+
+    private GameReadDto? Game;
+    private Guid? SessionId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        // Load game details
+        Game = await http.GetFromJsonAsync<GameReadDto>($"/api/games/Get/{GameId}");
+
+        // Start session tracking
+        var startResp = await http.PostAsJsonAsync("/api/sessions/start-session", new { gameId = GameId });
+        if (startResp.IsSuccessStatusCode)
+        {
+            var session = await startResp.Content.ReadFromJsonAsync<SessionDto>();
+            SessionId = session?.Id;
+        }
+        var apiBaseUrl = String.Empty;
+        if (Environment.GetEnvironmentVariable("RENDER") == "true")
+        {
+            apiBaseUrl = Environment.GetEnvironmentVariable("GAMESTORE_API_URL");
+        }
+        else
+        {
+            apiBaseUrl = Config["ApiBaseUrl"];
+        }
+
+        // Register JS event for unload → call EndSession
+        await JS.InvokeVoidAsync("registerEndSession", SessionId, apiBaseUrl);
+    }
+
+    private string IframeUrl => Game?.GameUrl ?? string.Empty;
+
+    private class SessionDto { public Guid Id { get; set; } }
+}
+@if (Game == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h2>@Game.Title</h2>
+    <iframe src="@IframeUrl" width="100%" height="600px" style="border:none;"></iframe>
+}
