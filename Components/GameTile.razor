@@ -309,7 +309,8 @@
             }
 
             // Open the game's URL in a new tab (so the marketplace remains open)
-            await JS.InvokeVoidAsync("open", Game.GameUrl, "_blank");
+            @* await JS.InvokeVoidAsync("open", Game.GameUrl, "_blank"); *@
+            NavManager.NavigateTo($"/games/play/{Game.Id}");
         }
         finally
         {
