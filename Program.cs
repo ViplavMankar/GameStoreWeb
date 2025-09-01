@@ -124,6 +124,7 @@ else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
         client.BaseAddress = Environment.GetEnvironmentVariable("GAMESTORE_API_URL") != null
             ? new Uri(Environment.GetEnvironmentVariable("GAMESTORE_API_URL"))
             : throw new Exception("Environment variable not set.");
+        client.Timeout = TimeSpan.FromMinutes(3);
     });
     builder.Services.AddHttpClient("PaymentApiService", client =>
     {
@@ -165,4 +166,5 @@ app.MapFallbackToPage("/myCollection", "/_Host");
 app.MapFallbackToPage("/mygames", "/_Host");
 app.MapFallbackToPage("/addblog", "/_Host");
 app.MapFallbackToPage("/blogsite", "/_Host");
+app.MapFallbackToPage("/playground", "/_Host");
 app.Run();

@@ -21,6 +21,43 @@
             <textarea id="blogEditor"></textarea>
         </div>
 
+        <div class="card mb-3">
+            <div class="card-header">Rewrite with AI</div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label">What should change? (prompt/instructions)</label>
+                    <textarea class="form-control" rows="3"
+                        placeholder="e.g., Make it friendlier, add an intro and conclusion, optimize for indie dev readers"
+                        @bind="_aiPrompt"></textarea>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-sm-4">
+                        <input class="form-control" placeholder="Audience (optional)" @bind="_aiAudience" />
+                    </div>
+                    <div class="col-sm-4">
+                        <input class="form-control" placeholder="Tone (e.g., friendly)" @bind="_aiTone" />
+                    </div>
+                    <div class="col-sm-4">
+                        <input type="number" class="form-control" placeholder="Target words (e.g., 900)"
+                            @bind="_aiTargetWordCount" />
+                    </div>
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" role="switch" id="switchRewriteExisting"
+                        @bind="_rewriteExisting" />
+                    <label class="form-check-label" for="switchRewriteExisting">Rewrite current editor content (off =
+                        generate fresh)</label>
+                </div>
+                <button class="btn btn-dark" @onclick="RewriteWithAI" disabled="@_aiBusy">
+                    @(_aiBusy ? "Rewriting…" : "Rewrite with AI")
+                </button>
+                @if (!string.IsNullOrEmpty(_aiError))
+                {
+                    <div class="text-danger mt-2">@_aiError</div>
+                }
+            </div>
+        </div>
+
         <button @onclick="SaveBlog" class="btn btn-primary">Save Blog</button>
 
         <hr />
@@ -39,6 +76,13 @@
     private string _blogContent = string.Empty;
     private bool _editorInitialized = false;
 
+    // AI controls
+    private string? _aiPrompt, _aiAudience, _aiTone;
+    private int? _aiTargetWordCount;
+    private bool _rewriteExisting = true;
+    private bool _aiBusy = false;
+    private string? _aiError;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -47,6 +91,64 @@
             _editorInitialized = true;
         }
     }
+
+    private async Task RewriteWithAI()
+    {
+        _aiError = null; _aiBusy = true;
+        try
+        {
+            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+            if (!string.IsNullOrEmpty(token))
+                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+
+            string? currentHtml = _editorInitialized
+            ? await JS.InvokeAsync<string>("getTinyMCEContent", "blogEditor")
+            : null;
+
+
+            // Build request; ask the AI to return HTML so we can drop it back into TinyMCE.
+            var req = new RewriteRequest
+            {
+                Input = _rewriteExisting ? currentHtml : null,
+                Prompt = "/no think " + _aiPrompt,
+                Audience = _aiAudience,
+                Tone = _aiTone,
+                TargetWordCount = _aiTargetWordCount,
+                UseFrontMatter = false,
+                AddSummary = false,
+                AddOutline = false,
+                StyleGuide = "Return HTML only (semantic headings, clean paragraphs, no inline styles)."
+            };
+
+
+            var res = await http.PostAsJsonAsync("/api/rewrite", req);
+            if (!res.IsSuccessStatusCode)
+            {
+                _aiError = $"Rewrite failed: {(int)res.StatusCode} - {await res.Content.ReadAsStringAsync()}";
+                return;
+            }
+
+
+            var data = await res.Content.ReadFromJsonAsync<RewriteResult>();
+            var html = data?.Markdown ?? string.Empty; // we asked the model to return HTML inside Markdown field
+            if (_editorInitialized)
+            {
+                await JS.InvokeVoidAsync("setTinyMCEContent", "blogEditor", html);
+            }
+        }
+        catch (Exception ex)
+        {
+            _aiError = ex.Message;
+        }
+        finally
+        {
+            _aiBusy = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task SaveBlog()
     {
         if (_editorInitialized)
@@ -83,5 +185,27 @@
                 Console.WriteLine($"Exception while saving blog: {ex.Message}");
             }
         }
+    }
+
+    // Local DTOs so the component compiles without referencing shared models
+    public class RewriteRequest
+    {
+        public string? Input { get; set; }
+        public string? Prompt { get; set; }
+        public string? Audience { get; set; }
+        public string? Tone { get; set; }
+        public string? StyleGuide { get; set; }
+        public string[]? SeoKeywords { get; set; }
+        public int? TargetWordCount { get; set; }
+        public bool UseFrontMatter { get; set; } = false;
+        public bool AddSummary { get; set; } = false;
+        public bool AddOutline { get; set; } = false;
+    }
+    public class RewriteResult
+    {
+        public string? Markdown { get; set; }
+        public string? Title { get; set; }
+        public string? Summary { get; set; }
+        public int EstimatedWordCount { get; set; }
     }
 }

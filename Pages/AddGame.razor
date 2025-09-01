@@ -19,107 +19,168 @@
 
 <AuthorizeView>
     <Authorized>
-        <div class="mb-4">
-            <label for="title">Game Title:</label>
-            <input type="text" id="title" @bind="GameTitle" class="form-control" />
+        <div class="mb-3">
+            <label for="gameNameInput" class="form-label">Game Title</label>
+            <input id="gameNameInput" type="text" class="form-control" @bind="gameName" placeholder="Enter game name" />
         </div>
 
-        <div class="mb-4">
-            <label for="url">Game URL:</label>
-            <input type="text" id="url" @bind="GameUrl" class="form-control" />
+        <div class="mb-3">
+            <label for="descInput" class="form-label">Description</label>
+            <textarea id="descInput" class="form-control" @bind="gameDescription" rows="3"></textarea>
         </div>
 
-        <div class="mb-4">
-            <label for="description">Description:</label>
-            <textarea id="description" @bind="GameDescription" class="form-control"></textarea>
+        <div class="mb-3">
+            <label for="priceInput" class="form-label">Price (₹)</label>
+            <input id="priceInput" type="number" step="0.01" class="form-control" @bind="priceRupees" />
         </div>
 
-        <div class="mb-4">
-            <label for="thumbnailurl">Thumbnail URL:</label>
-            <textarea id="thumbnailurl" @bind="GameThumbnailUrl" class="form-control"></textarea>
+        <div class="mb-3">
+            <label class="form-label">Thumbnail (optional)</label>
+            <InputFile OnChange="HandleThumbnailSelected" />
+            @if (!string.IsNullOrEmpty(thumbnailPreviewUrl))
+            {
+                <div class="mt-2">
+                    <img src="@thumbnailPreviewUrl" width="150" />
+                </div>
+            }
         </div>
 
-        <div class="mb-4">
-            <label for="price">Price (INR) — leave blank or 0 for Free:</label>
-            <InputNumber @bind-Value="PriceRupees" id="price" class="form-control" placeholder="e.g. 49.99" />
-            <small class="form-text text-muted">Enter rupees (decimal allowed). We'll convert it to paise
-                server-side.</small>
+        <div class="mb-3">
+            <label class="form-label">Select ZIP File</label>
+            <InputFile OnChange="HandleFileSelected" />
         </div>
-        <div>@(PriceRupees.HasValue && PriceRupees.Value > 0 ? $"₹{PriceRupees.Value:F2}" : "Free")</div>
 
-        <button class="btn btn-success" @onclick="SaveGame">Save</button>
+        <button class="btn btn-primary" @onclick="UploadZipAndSave"
+            disabled="@(_zipFile == null || string.IsNullOrWhiteSpace(gameName))">
+            Upload & Create Game
+        </button>
+
+        @if (_uploading)
+        {
+            <p class="mt-2">Uploading...</p>
+        }
+
+        @if (!string.IsNullOrEmpty(_gameUrl))
+        {
+            <h4 class="mt-3">Game Preview</h4>
+            <iframe src="@_gameUrl" width="800" height="600"></iframe>
+        }
     </Authorized>
     <NotAuthorized>
         <p>You must <a href="/Account/Login">log in</a>.</p>
     </NotAuthorized>
 </AuthorizeView>
+
 @code {
-    private string GameTitle;
-    private string GameUrl;
-    private string GameDescription;
-    private string GameThumbnailUrl;
+    private IBrowserFile? _zipFile;
+    private IBrowserFile? _thumbnailFile;
+    private string? gameName;
+    private string? gameDescription;
+    private decimal? priceRupees;
+    private string? _gameUrl;
+    private string? thumbnailPreviewUrl;
+    private string? thumbnailUrl;
+    private bool _uploading = false;
 
-    // Price in rupees as user input. Nullable => blank means free.
-    private decimal? PriceRupees;
+    private void HandleFileSelected(InputFileChangeEventArgs e) => _zipFile = e.File;
 
-    private async Task SaveGame()
+    private void HandleThumbnailSelected(InputFileChangeEventArgs e)
     {
+        _thumbnailFile = e.File;
+        thumbnailPreviewUrl = $"data:{_thumbnailFile.ContentType};base64," +
+        Convert.ToBase64String(new BinaryReader(_thumbnailFile.OpenReadStream(2_000_000)).ReadBytes((int)_thumbnailFile.Size));
+    }
+
+    private async Task UploadZipAndSave()
+    {
+        if (_zipFile == null || string.IsNullOrWhiteSpace(gameName)) return;
+
+        _uploading = true;
         try
         {
             var http = HttpClientFactory.CreateClient("GameStoreApiService");
 
-            var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+            // 1️⃣ Upload ZIP
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(gameName), "gameName");
+            var stream = _zipFile.OpenReadStream(100 * 1024 * 1024);
+            content.Add(new StreamContent(stream), "zipFile", _zipFile.Name);
 
-            if (!string.IsNullOrEmpty(token))
+            var uploadResp = await http.PostAsync("api/files/upload-zip", content);
+            if (!uploadResp.IsSuccessStatusCode)
             {
-                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                Console.WriteLine(await uploadResp.Content.ReadAsStringAsync());
+                return;
             }
+            var uploadResult = await uploadResp.Content.ReadFromJsonAsync<UploadResponse>();
+            _gameUrl = uploadResult?.Url;
+
+            // 2️⃣ Upload Thumbnail (optional)
+            if (_thumbnailFile != null)
+            {
+                using var thumbContent = new MultipartFormDataContent();
+                var thumbStream = _thumbnailFile.OpenReadStream(5 * 1024 * 1024);
+
+                var streamContent = new StreamContent(thumbStream);
+                streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(_thumbnailFile.ContentType);
+
+                thumbContent.Add(streamContent, "file", _thumbnailFile.Name);
+                thumbContent.Add(new StringContent(gameName), "gameName"); // don't forget gameName
+
+                var thumbResp = await http.PostAsync("api/files/upload-thumbnail", thumbContent);
+                if (thumbResp.IsSuccessStatusCode)
+                {
+                    var thumbResult = await thumbResp.Content.ReadFromJsonAsync<UploadResponse>();
+                    thumbnailUrl = thumbResult?.Url;
+                }
+            }
+
+            // 3️⃣ Create Game record
+            var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+            if (!string.IsNullOrEmpty(token))
+                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var newGame = new GameCreateDto
             {
-                Title = GameTitle,
-                Description = GameDescription,
-                GameUrl = GameUrl,
-                ThumbnailUrl = GameThumbnailUrl
+                Title = gameName,
+                Description = gameDescription,
+                GameUrl = _gameUrl,
+                ThumbnailUrl = thumbnailUrl
             };
 
-            // convert rupees -> paise
-            long pricePaise = 0;
-            if (PriceRupees.HasValue && PriceRupees.Value > 0m)
-            {
-                pricePaise = (long)Math.Round(PriceRupees.Value * 100m);
-            }
-
-            var response = await http.PostAsJsonAsync("api/Games/Create", newGame);
-
+            var response = await http.PostAsJsonAsync("api/games/create", newGame);
             if (response.IsSuccessStatusCode)
             {
                 var created = await response.Content.ReadFromJsonAsync<GameDto>();
-                if (created != null && pricePaise > 0)
+
+                if (created != null && priceRupees.HasValue && priceRupees.Value > 0)
                 {
-                    var priceResp = await http.PutAsJsonAsync($"api/games/{created.Id}/price",
+                    long pricePaise = (long)Math.Round(priceRupees.Value * 100m);
+                    await http.PutAsJsonAsync($"api/games/{created.Id}/price",
                     new { PricePaise = pricePaise, Currency = "INR" });
-                    if (!priceResp.IsSuccessStatusCode)
-                    {
-                        // log warning; optionally show message to user
-                    }
                 }
+
                 Navigation.NavigateTo("/marketplace");
-                Console.WriteLine("Game added successfully.");
             }
             else
             {
-                var error = await response.Content.ReadAsStringAsync();
-                Console.WriteLine("Error: " + error);
+                Console.WriteLine("Game creation failed: " + await response.Content.ReadAsStringAsync());
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error saving game.");
-            Console.WriteLine("An error occurred while saving the game: " + ex.Message);
+            Console.WriteLine("Error: " + ex.Message);
+        }
+        finally
+        {
+            _uploading = false;
         }
     }
 
+    private class UploadResponse
+    {
+        public string Url { get; set; } = string.Empty;
+    }
     private class GameDto
     {
         public Guid Id { get; set; }
