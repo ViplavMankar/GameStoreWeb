@@ -125,7 +125,7 @@ else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
         client.BaseAddress = Environment.GetEnvironmentVariable("GAMESTORE_API_URL") != null
             ? new Uri(Environment.GetEnvironmentVariable("GAMESTORE_API_URL"))
             : throw new Exception("Environment variable not set.");
-        client.Timeout = TimeSpan.FromMinutes(3);
+        client.Timeout = TimeSpan.FromMinutes(10);
     });
     builder.Services.AddHttpClient("PaymentApiService", client =>
     {
