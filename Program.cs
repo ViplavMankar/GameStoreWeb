@@ -12,7 +12,8 @@ var jwtKey = string.Empty;
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor();
+builder.Services.AddServerSideBlazor()
+        .AddCircuitOptions(options => { options.DetailedErrors = true; });
 
 if (builder.Environment.IsDevelopment())
 {

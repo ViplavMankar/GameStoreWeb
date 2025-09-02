@@ -84,11 +84,18 @@
 
     private void HandleFileSelected(InputFileChangeEventArgs e) => _zipFile = e.File;
 
-    private void HandleThumbnailSelected(InputFileChangeEventArgs e)
+    private async void HandleThumbnailSelected(InputFileChangeEventArgs e)
     {
         _thumbnailFile = e.File;
-        thumbnailPreviewUrl = $"data:{_thumbnailFile.ContentType};base64," +
-        Convert.ToBase64String(new BinaryReader(_thumbnailFile.OpenReadStream(2_000_000)).ReadBytes((int)_thumbnailFile.Size));
+
+        using var stream = _thumbnailFile.OpenReadStream(5 * 1024 * 1024); // allow up to 5MB
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        var bytes = ms.ToArray();
+
+        thumbnailPreviewUrl = $"data:{_thumbnailFile.ContentType};base64,{Convert.ToBase64String(bytes)}";
+
+        StateHasChanged(); // force UI refresh
     }
 
     private async Task UploadZipAndSave()
