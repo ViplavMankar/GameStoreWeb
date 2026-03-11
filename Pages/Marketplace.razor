@@ -11,28 +11,49 @@
 
 <AuthorizeView>
     <Authorized>
-        <h2 class="text-2xl font-bold mb-4">Marketplace</h2>
 
-        <ButtonComponentBlazor Type="button" Value="➕ Add Game" OnClickUrlString="/addGame" BgColor="48A6A7"
-            OnMouseEnterBgColor="006A71" AdditionalStyleTags="margin-left: 50px;margin-right: 50px;" />
+        <div class="max-w-7xl mx-auto px-6 py-8">
 
-        @if (games == null)
-        {
-            <p>Loading games...</p>
-        }
-        else if (games.Count == 0)
-        {
-            <p>No games found.</p>
-        }
-        else
-        {
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                @foreach (var game in games)
-                {
-                    <GameTile Game="game" IsInCollection="false" AllowEditing="allowEdit" OnEditClicked="EditGame" />
-                }
+            <div class="flex items-center justify-between mb-8">
+
+                <h2 class="text-3xl font-bold">Marketplace</h2>
+
+                <ButtonComponentBlazor Type="button" Value="➕ Add Game" OnClickUrlString="/addGame" BgColor="48A6A7"
+                    OnMouseEnterBgColor="006A71" />
+
             </div>
-        }
+
+            <div class="mb-6">
+
+                <input type="text" placeholder="Search games..." @bind="SearchText" @bind:event="oninput"
+                    class="w-full max-w-md px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white" />
+
+            </div>
+
+            @if (games == null)
+            {
+                <div class="text-gray-400 text-lg animate-pulse">
+                    Loading games...
+                </div>
+            }
+            else if (games.Count == 0)
+            {
+                <p>No games found.</p>
+            }
+            else
+            {
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+
+                    @foreach (var game in FilteredGames)
+                    {
+                        <GameTile Game="game" IsInCollection="false" AllowEditing="allowEdit" OnEditClicked="EditGame" />
+                    }
+
+                </div>
+            }
+
+        </div>
+
     </Authorized>
     <NotAuthorized>
         <p>You must <a href="/Account/Login">log in</a>.</p>
@@ -43,6 +64,13 @@
     private List<GameReadDto> games = new();
     private List<GameReadDto> savedGames = new();
     private bool allowEdit = false;
+
+    private string SearchText = "";
+    private IEnumerable<GameReadDto> FilteredGames =>
+    string.IsNullOrWhiteSpace(SearchText)
+    ? games
+    : games.Where(g =>
+    g.Title.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
