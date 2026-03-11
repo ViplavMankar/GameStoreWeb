@@ -1,7 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Routing
 
-
 <style>
     body {
         box-sizing: border-box;
@@ -42,10 +41,15 @@
                     <hr class="dropdown-divider">
                 </li>
                 <li>
+                    <form action="/Account/Logout" method="post">
+                        <button type="submit" class="dropdown-item">Logout</button>
+                    </form>
+                </li>
+                @* <li>
                     <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
                         <button type="submit" class="btn btn-link nav-link text-dark">Logout</button>
                     </form>
-                </li>
+                </li> *@
             </ul>
         </div>
     </nav>
@@ -163,51 +167,3 @@
         margin-bottom: 40px;
     }
 </style>
-
-@*     
-@inherits LayoutComponentBase
-@using Microsoft.AspNetCore.Components.Routing
-
-<div class="main-layout">
-    <nav class="navbar">
-        <NavLink href="/">Home</NavLink>
-        <NavLink href="/marketplace">Marketplace</NavLink>
-        <NavLink href="/myCollection">My Collection</NavLink>
-    </nav>
-
-    <main class="content px-4">
-        @Body
-    </main>
-</div>
-
-<style>
-    .main-layout {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    .navbar {
-        background-color: #0f172a;
-        padding: 12px 30px;
-        display: flex;
-        gap: 25px;
-        align-items: center;
-    }
-
-    .navbar a {
-        color: #e5e7eb;
-        text-decoration: none;
-        font-weight: 600;
-    }
-
-    .navbar a.active {
-        color: #22d3ee;
-    }
-
-    .navbar a:hover {
-        text-decoration: underline;
-    }
-
-    .content {
-        margin-top: 20px;
-    }
-</style> *@
