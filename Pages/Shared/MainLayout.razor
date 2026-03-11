@@ -1,40 +1,169 @@
 ﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Routing
+
+<style>
+    body {
+        box-sizing: border-box;
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+<script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
+<script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+<script src="/_sdk/element_sdk.js" type="text/javascript"></script>
 
 <div class="main-layout">
     <nav class="navbar">
-        <a href="/">Home</a>
-        <a href="/marketplace">Marketplace</a>
-        <a href="/myCollection">My Collection</a>
+        <div class="logo">
+            ⚡ GAMESTORE
+        </div>
+        <div class="nav-links">
+            <NavLink href="/" class="nav-item">
+                <span class="nav-icon">🏠</span> Home
+            </NavLink>
+            <NavLink href="/marketplace" class="nav-item">
+                <span class="nav-icon">🛍️</span> Marketplace
+            </NavLink>
+            <NavLink href="/myCollection" class="nav-item">
+                <span class="nav-icon">📚</span> My Collection
+            </NavLink>
+        </div>
+        <div>
+            <div class="dropdown"></div>
+            <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown"
+                aria-expanded="false">
+                <img src="Images/default-avatar.png" class="rounded-circle" style="width:50px; height:30px;" />
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                <li><a class="dropdown-item text-dark" href="/profile">Profile</a></li>
+                <li><a class="dropdown-item text-dark" href="/settings">Settings</a></li>
+                <li><a class="dropdown-item text-dark" href="/mygames">My Games</a></li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+                <li>
+                    <form action="/Account/Logout" method="post">
+                        <button type="submit" class="dropdown-item">Logout</button>
+                    </form>
+                </li>
+                @* <li>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-link nav-link text-dark">Logout</button>
+                    </form>
+                </li> *@
+            </ul>
+        </div>
     </nav>
-
     <main class="content px-4">
         @Body
     </main>
 </div>
-
 <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
     .main-layout {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: 'Courier New', monospace;
+        background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 50%, #0f0f2e 100%);
+        min-height: 100vh;
+        color: #e5e7eb;
     }
 
     .navbar {
-        background-color: #20232a;
-        padding: 10px;
-        color: white;
+        background: linear-gradient(90deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 20, 60, 0.95) 100%);
+        padding: 16px 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 3px solid;
+        border-image: linear-gradient(90deg, #ff006e, #00f5ff, #ff006e) 1;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 245, 255, 0.1);
     }
 
-    .navbar a {
-        color: white;
-        margin-right: 15px;
+    .logo {
+        font-size: 24px;
+        font-weight: 900;
+        letter-spacing: 3px;
+        background: linear-gradient(90deg, #00f5ff, #ff006e, #00f5ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
+        animation: glow 2s ease-in-out infinite;
+    }
+
+    @@keyframes glow {
+
+        0%,
+        100% {
+            text-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
+        }
+
+        50% {
+            text-shadow: 0 0 25px rgba(0, 245, 255, 0.8), 0 0 40px rgba(255, 0, 110, 0.4);
+        }
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 30px;
+        align-items: center;
+    }
+
+    .nav-item {
+        color: #a0aec0;
         text-decoration: none;
-        font-weight: bold;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 4px;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+        overflow: hidden;
     }
 
-    .navbar a:hover {
-        text-decoration: underline;
+    .nav-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.3), transparent);
+        transition: left 0.5s;
+    }
+
+    .nav-item:hover::before {
+        left: 100%;
+    }
+
+    .nav-item:hover {
+        color: #00f5ff;
+        border-bottom: 2px solid #ff006e;
+        text-shadow: 0 0 10px rgba(0, 245, 255, 0.6);
+        transform: translateY(-2px);
+    }
+
+    .nav-item.active {
+        color: #00f5ff;
+        border-bottom: 2px solid #ff006e;
+        text-shadow: 0 0 15px rgba(0, 245, 255, 0.8);
+        box-shadow: inset 0 0 20px rgba(0, 245, 255, 0.2);
+    }
+
+    .nav-icon {
+        font-size: 16px;
     }
 
     .content {
-        margin-top: 20px;
+        margin-top: 40px;
+        margin-bottom: 40px;
     }
 </style>

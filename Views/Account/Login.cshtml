@@ -1,51 +1,403 @@
 ﻿@model GameStoreWeb.Models.LoginViewModel
 
 @{
-    Layout = "/Views/Shared/_AuthLayout.cshtml";
+    Layout = null;
 }
 
-<h2>Login</h2>
+<!doctype html>
+<html lang="en" class="h-full">
 
-@{
-    if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-            @TempData["ErrorMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameStore - Login</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+    <script src="/_sdk/element_sdk.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&amp;family=Rajdhani:wght@300;400;500;600;700&amp;display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'orbitron': ['Orbitron', 'sans-serif'],
+                        'rajdhani': ['Rajdhani', 'sans-serif'],
+                    },
+                    colors: {
+                        'neon-cyan': '#00f5ff',
+                        'neon-purple': '#bf00ff',
+                        'dark-void': '#0a0a0f',
+                        'dark-card': '#12121a',
+                        'dark-border': '#1f1f2e',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @@keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+
+            50% {
+                transform: translateY(-20px) rotate(5deg);
+            }
+        }
+
+        @@keyframes pulse-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(0, 245, 255, 0.3), 0 0 40px rgba(0, 245, 255, 0.1);
+            }
+
+            50% {
+                box-shadow: 0 0 30px rgba(0, 245, 255, 0.5), 0 0 60px rgba(0, 245, 255, 0.2);
+            }
+        }
+
+        @@keyframes gradient-shift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @@keyframes scan-line {
+            0% {
+                top: -100%;
+            }
+
+            100% {
+                top: 100%;
+            }
+        }
+
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .animate-float-delayed {
+            animation: float 6s ease-in-out infinite;
+            animation-delay: -3s;
+        }
+
+        .animate-pulse-glow {
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        .gradient-animated {
+            background: linear-gradient(135deg, #00f5ff, #bf00ff, #00f5ff);
+            background-size: 200% 200%;
+            animation: gradient-shift 4s ease infinite;
+        }
+
+        .scan-line {
+            position: relative;
+        }
+
+        .scan-line::before {
+            content: '';
+            position: absolute;
+            top: -100%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.4), transparent);
+            animation: scan-line 4s linear infinite;
+            pointer-events: none;
+        }
+
+        .glass-card {
+            background: rgba(18, 18, 26, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 245, 255, 0.1);
+        }
+
+        .input-glow:focus {
+            box-shadow: 0 0 0 2px rgba(0, 245, 255, 0.3), inset 0 0 20px rgba(0, 245, 255, 0.05);
+        }
+
+        .btn-cyber {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-cyber::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-cyber:hover::before {
+            left: 100%;
+        }
+
+        .hex-pattern {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%2300f5ff' fill-opacity='0.03'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+    </style>
+    <style>
+        body {
+            box-sizing: border-box;
+        }
+    </style>
+    <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+</head>
+
+<body class="h-full bg-dark-void font-rajdhani overflow-auto">
+    <div class="min-h-full w-full hex-pattern relative overflow-hidden"><!-- Animated background elements -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none"><!-- Floating geometric shapes -->
+            <div class="absolute top-20 left-10 w-20 h-20 border border-neon-cyan/20 rotate-45 animate-float"></div>
+            <div
+                class="absolute top-40 right-20 w-16 h-16 border border-neon-purple/20 rotate-12 animate-float-delayed">
+            </div>
+            <div class="absolute bottom-32 left-1/4 w-12 h-12 border border-neon-cyan/10 -rotate-12 animate-float">
+            </div>
+            <div
+                class="absolute top-1/3 right-1/4 w-24 h-24 border border-neon-purple/10 rotate-45 animate-float-delayed">
+            </div><!-- Gradient orbs -->
+            <div class="absolute -top-40 -left-40 w-80 h-80 bg-neon-cyan/5 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-neon-purple/5 rounded-full blur-3xl"></div>
+            <div
+                class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-neon-cyan/3 to-transparent rounded-full blur-3xl">
+            </div>
+        </div><!-- Main content -->
+        <div class="relative z-10 min-h-full flex items-center justify-center p-6">
+            <div class="w-full max-w-md"><!-- Logo and branding -->
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center mb-4">
+                        <div class="relative">
+                            <div
+                                class="w-16 h-16 gradient-animated rounded-xl flex items-center justify-center transform -rotate-6 shadow-lg shadow-neon-cyan/20">
+                                <i data-lucide="gamepad-2" class="w-8 h-8 text-dark-void"></i>
+                            </div>
+                            <div class="absolute -top-1 -right-1 w-4 h-4 bg-neon-purple rounded-full animate-pulse">
+                            </div>
+                        </div>
+                    </div>
+                    <h1 class="font-orbitron text-3xl font-bold text-white tracking-wider mb-2">GAME<span
+                            class="text-neon-cyan">STORE</span></h1>
+                    <p class="text-gray-400 text-sm tracking-widest uppercase">Play • Create • Conquer</p>
+                </div><!-- Login card -->
+                <div class="glass-card rounded-2xl p-8 relative scan-line"><!-- Card header -->
+                    <div class="text-center mb-8">
+                        <h2 id="welcome-title" class="font-orbitron text-xl font-semibold text-white mb-2">Welcome Back,
+                            Player</h2>
+                        <p id="subtitle-text" class="text-gray-400 text-sm">Sign in to continue your journey</p>
+                    </div><!-- Login form -->
+                    <form asp-action="Login" method="post" id="login-form" class="space-y-5"><!-- Email field -->
+                        <div class="space-y-2"><label for="email"
+                                class="block text-sm font-medium text-gray-300 tracking-wide"> <span
+                                    class="flex items-center gap-2"> <i data-lucide="mail"
+                                        class="w-4 h-4 text-neon-cyan"></i> Username </span> </label>
+                            <div class="relative"><input type="text" id="username" name="Username" placeholder="player"
+                                    class="w-full px-4 py-3 bg-dark-void/50 border border-dark-border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50 input-glow transition-all duration-300"
+                                    required>
+                                <div
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-neon-cyan/50 rounded-full">
+                                </div>
+                            </div>
+                        </div><!-- Password field -->
+                        <div class="space-y-2"><label for="password"
+                                class="block text-sm font-medium text-gray-300 tracking-wide"> <span
+                                    class="flex items-center gap-2"> <i data-lucide="lock"
+                                        class="w-4 h-4 text-neon-cyan"></i> Password </span> </label>
+                            <div class="relative"><input type="password" id="password" name="Password"
+                                    placeholder="••••••••••••"
+                                    class="w-full px-4 py-3 bg-dark-void/50 border border-dark-border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50 input-glow transition-all duration-300 pr-12"
+                                    required> <button type="button" id="toggle-password"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-cyan transition-colors">
+                                    <i data-lucide="eye" class="w-5 h-5"></i> </button>
+                            </div>
+                        </div><!-- Remember me & Forgot password -->
+                        <div class="flex items-center justify-between text-sm"><label
+                                class="flex items-center gap-2 cursor-pointer group">
+                                <div class="relative"><input type="checkbox" id="remember" class="peer sr-only">
+                                    <div
+                                        class="w-5 h-5 border border-dark-border rounded bg-dark-void/50 peer-checked:bg-neon-cyan/20 peer-checked:border-neon-cyan/50 transition-all">
+                                    </div><i data-lucide="check"
+                                        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 text-neon-cyan opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                                </div><span class="text-gray-400 group-hover:text-gray-300 transition-colors">Remember
+                                    me</span>
+                            </label> <a href="#" class="text-neon-cyan hover:text-neon-cyan/80 transition-colors">Forgot
+                                password?</a>
+                        </div><!-- Submit button --> <button type="submit" id="sign-in-btn"
+                            class="w-full py-3.5 btn-cyber gradient-animated rounded-xl font-orbitron font-semibold text-dark-void tracking-wider uppercase transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-neon-cyan/25 active:scale-[0.98]">
+                            Launch Session </button>
+                    </form><!-- Divider -->
+                    <div class="flex items-center gap-4 my-6">
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-dark-border to-transparent"></div>
+                        <span class="text-gray-500 text-xs tracking-widest uppercase">or continue with</span>
+                        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-dark-border to-transparent"></div>
+                    </div><!-- Social login buttons -->
+                    <div class="grid grid-cols-1">
+                        <button onclick="location.href='@($"{ViewBag.AuthServiceBaseUrl}/api/auth/google/login")'"
+                            class="p-3 bg-dark-void/50 border border-dark-border rounded-xl hover:border-neon-cyan/30 hover:bg-neon-cyan/5 transition-all duration-300 group">
+                            <svg class="w-5 h-5 mx-auto text-gray-400 group-hover:text-white transition-colors"
+                                viewbox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path
+                                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path
+                                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                <path
+                                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                            </svg></button>
+                        @* <button
+                            class="p-3 bg-dark-void/50 border border-dark-border rounded-xl hover:border-neon-purple/30 hover:bg-neon-purple/5 transition-all duration-300 group">
+                            <i data-lucide="twitch"
+                                class="w-5 h-5 mx-auto text-gray-400 group-hover:text-[#9146FF] transition-colors"></i>
+                        </button> 
+                        <button
+                            class="p-3 bg-dark-void/50 border border-dark-border rounded-xl hover:border-white/30 hover:bg-white/5 transition-all duration-300 group">
+                            <svg class="w-5 h-5 mx-auto text-gray-400 group-hover:text-white transition-colors"
+                                viewbox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M11.99 2C6.47 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0011.99 2z" />
+                            </svg></button> *@
+                    </div><!-- Sign up link -->
+                    <p class="text-center mt-6 text-gray-400 text-sm">New to GameStore? <a asp-action="Register"
+                            class="text-neon-cyan hover:text-neon-cyan/80 font-semibold transition-colors">Create
+                            Account</a></p>
+                </div><!-- Footer -->
+                <p class="text-center mt-6 text-gray-600 text-xs tracking-wide">© 2026 GameStore. All rights reserved.
+                </p>
+            </div>
         </div>
-    }
-    if (TempData["Registration_success_message"] != null)
-    {
-        <div class="alert alert-warning bg-success alert-dismissible fade show" role="alert">
-            @TempData["Registration_success_message"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
-}
-
-<form asp-action="Login" method="post">
-    <div>
-        <label style="width: 100px;" asp-for="Username"></label>
-        <input asp-for="Username" />
-        <span asp-validation-for="Username"></span>
     </div>
-    <div>
-        <label style="width: 100px;" asp-for="Password"></label>
-        <input asp-for="Password" type="password" />
-        <span asp-validation-for="Password"></span>
-    </div>
-    @* <button type="submit">Login</button> *@
-    <component type="typeof(GameStoreWeb.Components.ButtonComponent)" render-mode="ServerPrerendered"
-        param-Type='@("submit")' param-Value='@("Login")' param-BgColor='@("48A6A7")'
-        param-OnMouseEnterBgColor='@("006A71")' />
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
 
-    <a href="@($"{ViewBag.AuthServiceBaseUrl}/api/auth/google/login")"
-        class="btn btn-danger mt-2 d-flex align-items-center justify-content-center"
-        style="gap: 8px; text-decoration: none; color: white; width: 200px;">
-        <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google"
-            style="width:20px; height:20px;">
-        <span>Sign in with Google</span>
-    </a>
-</form>
+        // Default configuration
+        const defaultConfig = {
+            welcome_title: 'Welcome Back, Player',
+            subtitle_text: 'Sign in to continue your journey',
+            button_text: 'Launch Session',
+            background_color: '#0a0a0f',
+            accent_color: '#00f5ff',
+            secondary_accent: '#bf00ff',
+            text_color: '#ffffff',
+            muted_text: '#9ca3af',
+            font_family: 'Rajdhani'
+        };
 
-<a asp-action="Register">Don't have an account? Register</a>
+        // Password toggle functionality
+        const togglePassword = document.getElementById('toggle-password');
+        const passwordInput = document.getElementById('password');
+        let passwordVisible = false;
+
+        togglePassword.addEventListener('click', () => {
+            passwordVisible = !passwordVisible;
+            passwordInput.type = passwordVisible ? 'text' : 'password';
+            togglePassword.innerHTML = passwordVisible
+                ? '<i data-lucide="eye-off" class="w-5 h-5"></i>'
+                : '<i data-lucide="eye" class="w-5 h-5"></i>';
+            lucide.createIcons();
+        });
+
+        // Form submission
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            @* e.preventDefault(); *@
+            const btn = document.getElementById('sign-in-btn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Authenticating...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                btn.textContent = 'Access Granted!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }, 1500);
+            }, 1500);
+        });
+
+        // Element SDK initialization
+        if (window.elementSdk) {
+            window.elementSdk.init({
+                defaultConfig,
+                onConfigChange: async (config) => {
+                    const fontFamily = config.font_family || defaultConfig.font_family;
+
+                    // Update welcome title
+                    const welcomeTitle = document.getElementById('welcome-title');
+                    welcomeTitle.textContent = config.welcome_title || defaultConfig.welcome_title;
+                    welcomeTitle.style.fontFamily = `${fontFamily}, sans-serif`;
+
+                    // Update subtitle
+                    const subtitle = document.getElementById('subtitle-text');
+                    subtitle.textContent = config.subtitle_text || defaultConfig.subtitle_text;
+                    subtitle.style.fontFamily = `${fontFamily}, sans-serif`;
+
+                    // Update button text
+                    const signInBtn = document.getElementById('sign-in-btn');
+                    signInBtn.textContent = config.button_text || defaultConfig.button_text;
+
+                    // Apply colors
+                    document.documentElement.style.setProperty('--accent-color', config.accent_color || defaultConfig.accent_color);
+                    document.documentElement.style.setProperty('--text-color', config.text_color || defaultConfig.text_color);
+                },
+                mapToCapabilities: (config) => ({
+                    recolorables: [
+                        {
+                            get: () => config.background_color || defaultConfig.background_color,
+                            set: (value) => { config.background_color = value; window.elementSdk.setConfig({ background_color: value }); }
+                        },
+                        {
+                            get: () => config.accent_color || defaultConfig.accent_color,
+                            set: (value) => { config.accent_color = value; window.elementSdk.setConfig({ accent_color: value }); }
+                        },
+                        {
+                            get: () => config.secondary_accent || defaultConfig.secondary_accent,
+                            set: (value) => { config.secondary_accent = value; window.elementSdk.setConfig({ secondary_accent: value }); }
+                        },
+                        {
+                            get: () => config.text_color || defaultConfig.text_color,
+                            set: (value) => { config.text_color = value; window.elementSdk.setConfig({ text_color: value }); }
+                        },
+                        {
+                            get: () => config.muted_text || defaultConfig.muted_text,
+                            set: (value) => { config.muted_text = value; window.elementSdk.setConfig({ muted_text: value }); }
+                        }
+                    ],
+                    borderables: [],
+                    fontEditable: {
+                        get: () => config.font_family || defaultConfig.font_family,
+                        set: (value) => { config.font_family = value; window.elementSdk.setConfig({ font_family: value }); }
+                    },
+                    fontSizeable: undefined
+                }),
+                mapToEditPanelValues: (config) => new Map([
+                    ['welcome_title', config.welcome_title || defaultConfig.welcome_title],
+                    ['subtitle_text', config.subtitle_text || defaultConfig.subtitle_text],
+                    ['button_text', config.button_text || defaultConfig.button_text]
+                ])
+            });
+        }
+    </script>
+    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9d93a25bb06f1397',t:'MTc3Mjk5MTcyMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
+</html>
