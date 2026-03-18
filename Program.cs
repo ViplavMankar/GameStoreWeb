@@ -168,4 +168,8 @@ app.MapFallbackToPage("/mygames", "/_Host");
 app.MapFallbackToPage("/addblog", "/_Host");
 app.MapFallbackToPage("/blogsite", "/_Host");
 app.MapFallbackToPage("/playground", "/_Host");
+app.MapFallbackToPage("/analytics/trendingGames", "/_Host");
+app.MapFallbackToPage("/analytics/playtime", "/_Host");
+app.MapFallbackToPage("/analytics/player-growth", "/_Host");
+app.MapFallbackToPage("/analytics", "/_Host");
 app.Run();
