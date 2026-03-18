@@ -1,0 +1,35 @@
+﻿@page "/analytics/trendingGames"
+@inject IHttpClientFactory HttpClientFactory
+@using Microsoft.JSInterop;
+@inject IJSRuntime JS
+
+<h2>Trending Games</h2>
+
+<div class="bg-gray-900 p-6 rounded-xl border border-fuchsia-500/20 shadow-lg">
+    <h3 class="text-lg text-white mb-4">Trending Games</h3>
+    <canvas id="trendingChart"></canvas>
+</div>
+
+@code {
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var client = HttpClientFactory.CreateClient("GameStoreApiService");
+
+        var data = await client.GetFromJsonAsync<List<TrendingGameDto>>("api/statistics/trending");
+
+        var labels = data.Select(x => x.Title).ToArray();
+        var sessions = data.Select(x => x.SessionCount).ToArray();
+
+        await JS.InvokeVoidAsync("renderChart", labels, sessions);
+    }
+
+    public class TrendingGameDto
+    {
+        public Guid GameId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public int SessionCount { get; set; }
+    }
+}

@@ -1,0 +1,68 @@
+﻿@page "/analytics/player-growth"
+
+@inject IHttpClientFactory HttpClientFactory
+@using Microsoft.JSInterop;
+@using Microsoft.AspNetCore.Components.Web
+@inject IJSRuntime JS
+
+<h2 class="text-white text-xl mb-4">Player Growth</h2>
+
+<div class="flex gap-3 mb-4">
+
+    <button class="px-3 py-1 bg-gray-800 text-black rounded" @onclick="() => ChangeRange(7)">
+        7 Days
+    </button>
+
+    <button class="px-3 py-1 bg-gray-800 text-black rounded" @onclick="() => ChangeRange(30)">
+        30 Days
+    </button>
+
+    <button class="px-3 py-1 bg-gray-800 text-black rounded" @onclick="() => ChangeRange(90)">
+        90 Days
+    </button>
+
+</div>
+
+<div class="bg-gray-900 p-6 rounded-xl border border-fuchsia-500/20 shadow-lg">
+    <h3 class="text-lg text-white mb-4">Trending Games</h3>
+    <canvas id="playerGrowthChart"></canvas>
+</div>
+
+@code {
+
+    private int selectedDays = 7;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadChart();
+        }
+    }
+
+    private async Task ChangeRange(int days)
+    {
+        selectedDays = days;
+
+        await LoadChart();
+    }
+
+    private async Task LoadChart()
+    {
+        var client = HttpClientFactory.CreateClient("GameStoreApiService");
+
+        var data = await client.GetFromJsonAsync<List<DailyActivePlayersDto>>(
+        $"api/statistics/daily-active-players?days={selectedDays}");
+
+        var labels = data.Select(x => x.Date.ToString("MMM dd")).ToArray();
+        var players = data.Select(x => x.ActivePlayers).ToArray();
+
+        await JS.InvokeVoidAsync("renderPlayerGrowthChart", labels, players);
+    }
+
+    public class DailyActivePlayersDto
+    {
+        public DateTime Date { get; set; }
+        public int ActivePlayers { get; set; }
+    }
+}
