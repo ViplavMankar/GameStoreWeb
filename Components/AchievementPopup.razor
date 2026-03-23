@@ -1,0 +1,31 @@
+﻿@if (visible)
+{
+    <div class="achievement-popup">
+        <img src="@Icon" />
+        <div>
+            <strong>🏆 Achievement Unlocked!</strong>
+            <p>@Name</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+
+    private bool visible;
+
+    public async Task ShowAsync(string name, string icon)
+    {
+        Name = name;
+        Icon = icon;
+        visible = true;
+
+        StateHasChanged();
+
+        await Task.Delay(3000);
+
+        visible = false;
+        StateHasChanged();
+    }
+}
