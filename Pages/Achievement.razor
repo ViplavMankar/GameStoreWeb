@@ -1,0 +1,62 @@
+﻿@page "/achievements"
+@inject IHttpClientFactory HttpClientFactory
+@using Microsoft.JSInterop;
+@inject IJSRuntime JS;
+
+<h3 class="mb-4">🏆 Achievements</h3>
+
+@if (achievements == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="achievement-grid">
+        @foreach (var achievement in achievements)
+        {
+            <div class="achievement-card @(achievement.IsUnlocked ? "unlocked" : "locked")">
+                <img src="@achievement.Icon" alt="icon" />
+
+                <h5>@achievement.Name</h5>
+                <p>@achievement.Description</p>
+
+                @if (achievement.IsUnlocked)
+                {
+                    <span class="badge bg-success">Unlocked</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">Locked</span>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<AchievementDto>? achievements;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            http.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+
+        achievements = await http.GetFromJsonAsync<List<AchievementDto>>("api/achievements/my");
+    }
+
+    public class AchievementDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Icon { get; set; } = string.Empty;
+
+        public bool IsUnlocked { get; set; }
+    }
+}
