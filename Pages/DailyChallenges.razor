@@ -1,0 +1,80 @@
+﻿@page "/daily-challenges"
+@inject IHttpClientFactory HttpClientFactory
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@using System.Net.Http.Headers;
+
+<h3 class="mb-4">🎯 Daily Challenges</h3>
+
+@if (challenges == null)
+{
+    <p>Loading...</p>
+}
+else if (!challenges.Any())
+{
+    <p>No challenges available today.</p>
+}
+else
+{
+    <div class="challenge-container">
+        @foreach (var ch in challenges)
+        {
+            <div class="challenge-card @(ch.IsCompleted ? "completed" : "")">
+
+                <div class="challenge-header">
+                    <h5>@ch.Title</h5>
+                    <span class="xp">+@ch.XPReward XP</span>
+                </div>
+
+                <p>@ch.Description</p>
+
+                <div class="progress-section">
+                    <div class="progress">
+                        <div class="progress-bar" style="width:@GetProgressPercent(ch)%">
+                        </div>
+                    </div>
+
+                    <span class="progress-text">
+                        @(ch.IsCompleted
+                                        ? "Completed ✅"
+                                        : $"{ch.CurrentProgress}/{ch.TargetValue}")
+                    </span>
+                </div>
+            </div>
+        }
+    </div>
+}
+@code {
+    private List<ChallengeDto>? challenges;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        challenges = await http.GetFromJsonAsync<List<ChallengeDto>>("api/challenges/my-challenges");
+    }
+
+    private int GetProgressPercent(ChallengeDto ch)
+    {
+        if (ch.TargetValue == 0) return 0;
+
+        var percent = (double)ch.CurrentProgress / ch.TargetValue * 100;
+        return (int)Math.Min(percent, 100);
+    }
+
+    public class ChallengeDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public int TargetValue { get; set; }
+        public int XPReward { get; set; }
+        public int CurrentProgress { get; set; }
+        public bool IsCompleted { get; set; }
+    }
+}
