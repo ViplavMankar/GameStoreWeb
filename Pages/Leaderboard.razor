@@ -1,0 +1,134 @@
+﻿@page "/leaderboard"
+@inject IHttpClientFactory HttpClientFactory
+@using Microsoft.AspNetCore.Components.Web;
+
+<h3 class="mb-4">🏆 Leaderboard</h3>
+
+@if (leaderboard == null)
+{
+    <p>Loading leaderboard...</p>
+}
+else if (!leaderboard.Any())
+{
+    <p>No data available.</p>
+}
+else
+{
+    <div class="mb-3">
+        <button class="btn btn-sm me-2 @(mode == "playtime" ? "btn-success" : "btn-outline-light")"
+            @onclick="@(() => SwitchMode("playtime"))">
+            ⏱️ Playtime
+        </button>
+
+        <button class="btn btn-sm @(mode == "xp" ? "btn-success" : "btn-outline-light")"
+            @onclick="@(() => SwitchMode("xp"))">
+            ⭐ XP
+        </button>
+    </div>
+    <table class="table table-bordered table-hover text-white">
+        <thead class="table-light">
+            <tr>
+                <th># Rank</th>
+                <th>Username</th>
+                <th>@(mode == "xp" ? "XP" : "Playtime")</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in leaderboard)
+            {
+                <tr>
+                    <td>
+                        @if (entry.Rank == 1)
+                        {
+                            <span>🥇</span>
+                        }
+                        else if (entry.Rank == 2)
+                        {
+                            <span>🥈</span>
+                        }
+                        else if (entry.Rank == 3)
+                        {
+                            <span>🥉</span>
+                        }
+                        else
+                        {
+                            @entry.Rank
+                        }
+                </td>
+                <td>@entry.Username</td>
+                <td>
+                    @(mode == "xp"
+                                    ? $"{entry.Value} XP"
+                                    : FormatTime(entry.Value))
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<LeaderboardDto>? leaderboard;
+    private string mode = "playtime"; // default
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLeaderboard();
+    }
+
+    private async Task LoadLeaderboard()
+    {
+        try
+        {
+            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+
+            var url = mode == "xp"
+            ? "api/leaderboard/xp"
+            : "api/leaderboard/playtime";
+
+            leaderboard = await http.GetFromJsonAsync<List<LeaderboardDto>>(url);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching leaderboard: {ex.Message}");
+            leaderboard = new List<LeaderboardDto>();
+        }
+    }
+
+    private async Task SwitchMode(string newMode)
+    {
+        if (mode == newMode) return;
+
+        mode = newMode;
+        leaderboard = null; // show loading again
+
+        await LoadLeaderboard();
+    }
+
+    @* private async Task LoadLeaderboard()
+    {
+        try
+        {
+            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            leaderboard = await http.GetFromJsonAsync<List<LeaderboardDto>>("api/leaderboard/all");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching leaderboard: {ex.Message}");
+            leaderboard = new List<LeaderboardDto>();
+        }
+    } *@
+
+    private string FormatTime(int seconds)
+    {
+        var ts = TimeSpan.FromSeconds(seconds);
+        return $"{ts.Hours}h {ts.Minutes}m {ts.Seconds}s";
+    }
+
+    public class LeaderboardDto
+    {
+        public int Rank { get; set; }
+        public string Username { get; set; }
+        public int Value { get; set; }
+    }
+}
