@@ -6,6 +6,7 @@
 @using GameStoreWeb.Models
 @using System.Net.Http.Headers;
 @inject IConfiguration Config
+@using Microsoft.AspNetCore.Components.Routing;
 
 @code {
     [Parameter] public Guid GameId { get; set; }
@@ -14,6 +15,32 @@
     private Guid? SessionId;
 
     protected override async Task OnInitializedAsync()
+    {
+        NavManager.LocationChanged += OnLocationChanged;
+
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            http.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        Game = await http.GetFromJsonAsync<GameReadDto>($"/api/games/Get/{GameId}");
+
+        var startResp = await http.PostAsJsonAsync("/api/sessions/start-session",
+        new { gameId = GameId });
+
+        if (startResp.IsSuccessStatusCode)
+        {
+            var session = await startResp.Content.ReadFromJsonAsync<SessionDto>();
+            SessionId = session?.Id;
+        }
+    }
+
+    @* protected override async Task OnInitializedAsync()
     {
         var http = HttpClientFactory.CreateClient("GameStoreApiService");
 
@@ -45,6 +72,25 @@
 
         // Register JS event for unload → call EndSession
         await JS.InvokeVoidAsync("registerEndSession", SessionId, apiBaseUrl);
+
+    } *@
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        Console.WriteLine("User navigated to: " + e.Location);
+        if (SessionId == null) return;
+
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+
+        await http.PostAsJsonAsync("/api/sessions/end-session",
+        new { sessionId = SessionId });
+
+        SessionId = null;
+    }
+
+    public void Dispose()
+    {
+        NavManager.LocationChanged -= OnLocationChanged;
     }
 
     private string IframeUrl => Game?.GameUrl ?? string.Empty;

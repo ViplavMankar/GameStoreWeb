@@ -1,0 +1,129 @@
+﻿@page "/profile"
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@using System.Net.Http.Headers;
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IHttpClientFactory HttpClientFactory
+
+<h2>Player Profile</h2>
+
+@if (profile == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#020617] text-white p-6">
+
+        <!-- Header -->
+        <div class="flex items-center gap-4 mb-8">
+            <div
+                class="w-16 h-16 rounded-full bg-cyan-500 flex items-center justify-center text-2xl font-bold shadow-lg shadow-cyan-500/50">
+                @profile.Username.Substring(0, 1).ToUpper()
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-cyan-400">@profile.Username</h2>
+                <p class="text-gray-400">Gamer Profile</p>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+
+            <div class="bg-[#020617] p-4 rounded-xl border border-cyan-500 shadow-lg shadow-cyan-500/20">
+                <p class="text-gray-400 text-sm">Total Sessions</p>
+                <h3 class="text-xl font-bold text-cyan-400">@profile.TotalSessions</h3>
+            </div>
+
+            <div class="bg-[#020617] p-4 rounded-xl border border-pink-500 shadow-lg shadow-pink-500/20">
+                <p class="text-gray-400 text-sm">Games Played</p>
+                <h3 class="text-xl font-bold text-pink-400">@profile.TotalGamesPlayed</h3>
+            </div>
+
+            <div class="bg-[#020617] p-4 rounded-xl border border-green-400 shadow-lg shadow-green-400/20">
+                <p class="text-gray-400 text-sm">Playtime</p>
+                <h3 class="text-xl font-bold text-green-400">
+                    @(Math.Round(profile.TotalPlaytimeMinutes / 60.0, 2)) hrs
+                </h3>
+            </div>
+
+            <div class="bg-[#020617] p-4 rounded-xl border border-yellow-400 shadow-lg shadow-yellow-400/20">
+                <p class="text-gray-400 text-sm">Favorite Game</p>
+                <h3 class="text-lg font-bold text-yellow-300">
+                    @(profile.FavoriteGame ?? "N/A")
+                </h3>
+            </div>
+
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="bg-[#020617] p-6 rounded-xl border border-purple-500 shadow-lg shadow-purple-500/20">
+            <h3 class="text-xl font-bold text-purple-400 mb-4">Recent Activity</h3>
+
+            @if (profile.RecentGames.Any())
+            {
+                <div class="space-y-3">
+                    @foreach (var game in profile.RecentGames)
+                    {
+                        <div class="flex justify-between items-center bg-[#0f172a] p-3 rounded-lg">
+                            <span class="text-gray-300">@game.GameTitle</span>
+                            <span class="text-sm text-gray-400">@game.DurationMinutes min</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-gray-500">No recent activity</p>
+            }
+        </div>
+
+    </div>
+}
+
+@code {
+
+    PlayerProfileDto? profile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var client = HttpClientFactory.CreateClient("GameStoreApiService");
+
+        var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        try
+        {
+            profile = await client.GetFromJsonAsync<PlayerProfileDto>("api/profile/player-profile");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to load games: {ex.Message}");
+        }
+    }
+
+    public class PlayerProfileDto
+    {
+        public string Username { get; set; } = "";
+
+        public int TotalSessions { get; set; }
+        public int TotalGamesPlayed { get; set; }
+        public int TotalPlaytimeMinutes { get; set; }
+
+        public string? FavoriteGame { get; set; }
+
+        public List<RecentGameDto> RecentGames { get; set; } = new();
+    }
+
+    public class RecentGameDto
+    {
+        public string GameTitle { get; set; } = "";
+        public int DurationMinutes { get; set; }
+        public DateTime PlayedAt { get; set; }
+    }
+
+}
