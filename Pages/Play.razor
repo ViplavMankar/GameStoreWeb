@@ -7,12 +7,14 @@
 @using System.Net.Http.Headers;
 @inject IConfiguration Config
 @using Microsoft.AspNetCore.Components.Routing;
+@using GameStoreWeb.Components;
 
 @code {
     [Parameter] public Guid GameId { get; set; }
 
     private GameReadDto? Game;
     private Guid? SessionId;
+    private AchievementPopup? popup;
 
     protected override async Task OnInitializedAsync()
     {
@@ -37,6 +39,7 @@
         {
             var session = await startResp.Content.ReadFromJsonAsync<SessionDto>();
             SessionId = session?.Id;
+            Console.WriteLine("Session started with ID: " + SessionId);
         }
     }
 
@@ -77,6 +80,36 @@
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
+
+        if (SessionId == null) return;
+
+        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+
+        var response = await http.PostAsJsonAsync("/api/sessions/end-session",
+        new { sessionId = SessionId });
+
+        if (response.IsSuccessStatusCode)
+        {
+            var unlocked = await response.Content
+            .ReadFromJsonAsync<List<AchievementDto>>();
+
+            if (unlocked != null && unlocked.Any())
+            {
+                foreach (var achievement in unlocked)
+                {
+                    if (popup != null)
+                    {
+                        await popup.ShowAsync(achievement.Name, achievement.Icon);
+                    }
+                }
+            }
+        }
+
+        SessionId = null;
+    }
+
+    @* private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
         Console.WriteLine("User navigated to: " + e.Location);
         if (SessionId == null) return;
 
@@ -86,7 +119,7 @@
         new { sessionId = SessionId });
 
         SessionId = null;
-    }
+    } *@
 
     public void Dispose()
     {
@@ -96,7 +129,14 @@
     private string IframeUrl => Game?.GameUrl ?? string.Empty;
 
     private class SessionDto { public Guid Id { get; set; } }
+    public class AchievementDto
+    {
+        public string Name { get; set; } = "";
+        public string Icon { get; set; } = "";
+    }
 }
+<AchievementPopup @ref="popup" />
+
 @if (Game == null)
 {
     <p>Loading...</p>
