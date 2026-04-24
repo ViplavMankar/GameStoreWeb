@@ -65,10 +65,15 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            // ✅ Grab JWT from session instead of Authorization header
-            var token = context.HttpContext.Session.GetString("JWToken");
-            if (!string.IsNullOrEmpty(token))
-                context.Token = token;
+            var path = context.HttpContext.Request.Path;
+
+            // ✅ ONLY apply this logic to YOUR custom hub
+            if (path.StartsWithSegments("/realtimehub"))
+            {
+                var token = context.HttpContext.Session.GetString("JWToken");
+                if (!string.IsNullOrEmpty(token))
+                    context.Token = token;
+            }
 
             return Task.CompletedTask;
         },
@@ -172,4 +177,5 @@ app.MapFallbackToPage("/analytics/trendingGames", "/_Host");
 app.MapFallbackToPage("/analytics/playtime", "/_Host");
 app.MapFallbackToPage("/analytics/player-growth", "/_Host");
 app.MapFallbackToPage("/analytics", "/_Host");
+app.MapFallbackToPage("/converter", "/_Host");
 app.Run();
