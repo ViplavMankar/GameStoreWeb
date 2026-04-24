@@ -142,3 +142,23 @@ body {
   margin-top: 5px;
   display: block;
 }
+
+.upload-container {
+  max-width: 500px;
+  margin: auto;
+  padding: 20px;
+  text-align: center;
+  border: 1px dashed #ccc;
+  border-radius: 10px;
+}
+
+.preview-section {
+  margin-top: 20px;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  margin-top: 10px;
+}
