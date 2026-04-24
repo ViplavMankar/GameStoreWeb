@@ -1,50 +1,10 @@
-﻿@{
+﻿@model DashboardViewModel
+@{
     ViewData["Title"] = "Welcome to GameStore!";
 }
 
-<div class="max-w-4xl mx-auto bg-[#1a1a24]/60 backdrop-blur-md rounded-xl shadow-2xl border border-[#2a2a3a] p-8">
-    <section class="mb-10">
-        <h3 class="text-2xl font-semibold text-purple-400 mb-3">🚀 Technologies Used</h3>
-        <ul class="list-disc list-inside text-gray-300 space-y-1">
-            <li>ASP.NET Core MVC + Blazor Server</li>
-            <li>JWT Authentication with Identity</li>
-            <li>PostgreSQL + EF Core</li>
-            <li>Hosted on Render + GitHub Pages</li>
-        </ul>
-    </section>
-
-    <section class="mb-10">
-        <h3 class="text-2xl font-semibold text-cyan-400 mb-3">🎯 Features Implemented</h3>
-        <ul class="list-disc list-inside text-gray-300 space-y-1">
-            <li>Login/Registration with session handling</li>
-            <li>Secure token-based auth via AuthService</li>
-            <li>Game marketplace with thumbnails and links</li>
-            <li>Reusable Blazor components</li>
-            <li>Add Game feature to add game from UI</li>
-        </ul>
-    </section>
-
-    <section class="mb-10">
-        <h3 class="text-2xl font-semibold text-pink-400 mb-3">🕹️ What is GameStore?</h3>
-        <p class="text-gray-300 leading-relaxed">
-            GameStore is an online platform for playing and sharing browser-based games. It allows developers to
-            showcase their creations and players to explore indie games built with HTML, CSS, and JavaScript.
-            <br><br>
-            In version v1, users can host their own games for free on platforms like GitHub Pages, Render, or Railway.
-            The current version includes games developed as part of a JavaScript learning journey, with plans to
-            expand the collection and features.
-            <br><br>
-            <span class="text-cyan-300 font-semibold">Structure Overview:</span>
-        <ul class="list-decimal list-inside mt-2 text-gray-300 space-y-1">
-            <li><strong>Marketplace:</strong> Browse and play community-shared games.</li>
-            <li><strong>Saved Collection [Planned]:</strong> Access your saved games and play directly.</li>
-            <li><strong>Share Game:</strong> Upload and share your own creations with the community.</li>
-        </ul>
-        <br>
-        Many more features and games are planned for future updates as the platform evolves.
-        </p>
-    </section>
-
-    <p class="text-gray-500 text-center mt-10 italic">Thank you for checking out GameStore. This is just the beginning!
-    </p>
+<div>
+    <h3>⚡ XP: @Model.TotalXP</h3>
+    <h3>⚡ Current Streak: @Model.CurrentStreak</h3>
+    <h3>⚡ Max Streak: @Model.MaxStreak</h3>
 </div>
