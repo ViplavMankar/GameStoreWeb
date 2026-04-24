@@ -21,18 +21,27 @@ public class HomeController : Controller
         _logger = logger;
     }
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
         var client = _httpClientFactory.CreateClient("GameStoreApiService");
         try
         {
             AttachTokenToClient(client);
+            var model = new DashboardViewModel();
+            model.TotalXP = 0;
+            model.CurrentStreak = 0;
+            model.MaxStreak = 0;
+            var xp = await client.GetFromJsonAsync<XPViewModel>("api/dashboards/GetXP");
+            var streak = await client.GetFromJsonAsync<StreakViewModel>("api/dashboards/GetStreak");
+            model.TotalXP = xp?.TotalXP ?? 0;
+            model.CurrentStreak = streak?.CurrentStreak ?? 0;
+            model.MaxStreak = streak?.MaxStreak ?? 0;
+            return View(model);
         }
         catch
         {
             return RedirectToAction("Login", "Account");
         }
-        return View();
     }
 
     public IActionResult Privacy()
@@ -50,6 +59,7 @@ public class HomeController : Controller
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
+
     private void AttachTokenToClient(HttpClient client)
     {
         var token = HttpContext.Session.GetString("JWToken");
