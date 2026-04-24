@@ -129,7 +129,7 @@
                 var thumbStream = _thumbnailFile.OpenReadStream(5 * 1024 * 1024);
 
                 var streamContent = new StreamContent(thumbStream);
-                streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(_thumbnailFile.ContentType);
+                streamContent.Headers.ContentType = new MediaTypeHeaderValue(_thumbnailFile.ContentType);
 
                 thumbContent.Add(streamContent, "file", _thumbnailFile.Name);
                 thumbContent.Add(new StringContent(gameName), "gameName"); // don't forget gameName
