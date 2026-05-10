@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace GameStore.Api.Migrations
+namespace GameStoreWeb.Migrations
 {
     /// <inheritdoc />
     public partial class CreatedGamePrices : Migration
