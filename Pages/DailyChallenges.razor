@@ -1,8 +1,11 @@
 ﻿@page "/daily-challenges"
-@inject IHttpClientFactory HttpClientFactory
-@using Microsoft.JSInterop
-@inject IJSRuntime JS
+@using Microsoft.AspNetCore.Components.Authorization
 @using System.Net.Http.Headers;
+@inject AuthenticationStateProvider AuthStateProvider
+@using System.Security.Claims;
+@using GameStoreWeb.Services;
+@using GameStoreWeb.DTOs;
+@inject IChallengeService ChallengeService;
 
 <h3 class="mb-4">🎯 Daily Challenges</h3>
 
@@ -49,14 +52,29 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
         var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
         if (!string.IsNullOrEmpty(token))
         {
             http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        } *@
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user?.Identity == null || !user.Identity.IsAuthenticated)
+        {
+            return; // UI will handle NotAuthorized
         }
-        challenges = await http.GetFromJsonAsync<List<ChallengeDto>>("api/challenges/my-challenges");
+
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+        {
+            return;
+        }
+
+        var userId = Guid.Parse(userIdClaim.Value);
+        @* challenges = await http.GetFromJsonAsync<List<ChallengeDto>>("api/challenges/my-challenges"); *@
+        challenges = await ChallengeService.GetMyChallengesAsync(userId);
     }
 
     private int GetProgressPercent(ChallengeDto ch)
@@ -65,16 +83,5 @@ else
 
         var percent = (double)ch.CurrentProgress / ch.TargetValue * 100;
         return (int)Math.Min(percent, 100);
-    }
-
-    public class ChallengeDto
-    {
-        public Guid Id { get; set; }
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public int TargetValue { get; set; }
-        public int XPReward { get; set; }
-        public int CurrentProgress { get; set; }
-        public bool IsCompleted { get; set; }
     }
 }

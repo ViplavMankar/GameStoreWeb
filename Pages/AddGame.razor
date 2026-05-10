@@ -10,9 +10,15 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
+@using GameStoreWeb.Services;
+@inject IS3Service S3Service
+@inject IGameService GameService
+@inject IPricingService PricingService
 
 @using GameStoreWeb.Models
 @using GameStoreWeb.Components
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthStateProvider;
 
 
 <h2>Add New Game</h2>
@@ -35,7 +41,7 @@
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Thumbnail (optional)</label>
+            <label class="form-label">Thumbnail</label>
             <InputFile OnChange="HandleThumbnailSelected" />
             @if (!string.IsNullOrEmpty(thumbnailPreviewUrl))
             {
@@ -84,7 +90,7 @@
 
     private void HandleFileSelected(InputFileChangeEventArgs e) => _zipFile = e.File;
 
-    private async void HandleThumbnailSelected(InputFileChangeEventArgs e)
+    private async Task HandleThumbnailSelected(InputFileChangeEventArgs e)
     {
         _thumbnailFile = e.File;
 
@@ -105,90 +111,132 @@
         _uploading = true;
         try
         {
-            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            @* var http = HttpClientFactory.CreateClient("GameStoreApiService"); *@
 
             // 1️⃣ Upload ZIP
-            using var content = new MultipartFormDataContent();
+            @* using var content = new MultipartFormDataContent();
             content.Add(new StringContent(gameName), "gameName");
             var stream = _zipFile.OpenReadStream(100 * 1024 * 1024);
-            content.Add(new StreamContent(stream), "zipFile", _zipFile.Name);
+            content.Add(new StreamContent(stream), "zipFile", _zipFile.Name); *@
 
-            var uploadResp = await http.PostAsync("api/files/upload-zip", content);
-            if (!uploadResp.IsSuccessStatusCode)
+            using var stream = _zipFile.OpenReadStream(100 * 1024 * 1024);
+
+            using var ms = new MemoryStream();
+
+            await stream.CopyToAsync(ms);
+            ms.Position = 0;
+
+            @* var uploadResp = await http.PostAsync("api/files/upload-zip", content); *@
+            var result = await S3Service.UploadZipAsync(ms, gameName);
+            @* if (!uploadResp.IsSuccessStatusCode)
             {
                 Console.WriteLine(await uploadResp.Content.ReadAsStringAsync());
                 return;
             }
-            var uploadResult = await uploadResp.Content.ReadFromJsonAsync<UploadResponse>();
-            _gameUrl = uploadResult?.Url;
+            var uploadResult = await uploadResp.Content.ReadFromJsonAsync<UploadResponse>(); *@
+            if (string.IsNullOrEmpty(result))
+            {
+                Console.WriteLine("Upload failed or no HTML file found.");
+                return;
+            }
+
+            _gameUrl = result;
 
             // 2️⃣ Upload Thumbnail (optional)
             if (_thumbnailFile != null)
             {
-                using var thumbContent = new MultipartFormDataContent();
+                @* using var thumbContent = new MultipartFormDataContent();
                 var thumbStream = _thumbnailFile.OpenReadStream(5 * 1024 * 1024);
 
                 var streamContent = new StreamContent(thumbStream);
                 streamContent.Headers.ContentType = new MediaTypeHeaderValue(_thumbnailFile.ContentType);
 
                 thumbContent.Add(streamContent, "file", _thumbnailFile.Name);
-                thumbContent.Add(new StringContent(gameName), "gameName"); // don't forget gameName
+                thumbContent.Add(new StringContent(gameName), "gameName"); // don't forget gameName *@
 
-                var thumbResp = await http.PostAsync("api/files/upload-thumbnail", thumbContent);
+                using var thumbStream = _thumbnailFile.OpenReadStream(5 * 1024 * 1024);
+
+                var key = $"{gameName}/thumbnails/{Guid.NewGuid()}{Path.GetExtension(_thumbnailFile.Name)}";
+
+                @* var thumbResp = await http.PostAsync("api/files/upload-thumbnail", thumbContent);
                 if (thumbResp.IsSuccessStatusCode)
                 {
                     var thumbResult = await thumbResp.Content.ReadFromJsonAsync<UploadResponse>();
                     thumbnailUrl = thumbResult?.Url;
+                } *@
+                var thumb = await S3Service.UploadFileAsync(thumbStream, key, _thumbnailFile.ContentType);
+                if (string.IsNullOrEmpty(thumb))
+                {
+                    Console.WriteLine("Thumbnail upload failed.");
+                    return;
+                }
+                else
+                {
+                    thumbnailUrl = thumb;
                 }
             }
 
             // 3️⃣ Create Game record
-            var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+            @* var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
             if (!string.IsNullOrEmpty(token))
-                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token); *@
 
-            var newGame = new GameCreateDto
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            if (!user.Identity.IsAuthenticated)
+            {
+                @* Navigation.NavigateTo("/login"); *@
+                return;
+            }
+
+            var userIdString = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                @* Navigation.NavigateTo("/login"); *@
+                return;
+            }
+            var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var newGame = new DTOs.GameCreateDto
             {
                 Title = gameName,
                 Description = gameDescription,
                 GameUrl = _gameUrl,
                 ThumbnailUrl = thumbnailUrl
             };
-
-            var response = await http.PostAsJsonAsync("api/games/create", newGame);
-            if (response.IsSuccessStatusCode)
+            var responseDto = await GameService.CreateAsync(newGame, userId);
+            @* var response = await http.PostAsJsonAsync("api/games/create", newGame); *@
+            if (responseDto != null)
             {
-                var created = await response.Content.ReadFromJsonAsync<GameDto>();
-
-                if (created != null && priceRupees.HasValue && priceRupees.Value > 0)
+                if (priceRupees.HasValue && priceRupees.Value > 0)
                 {
                     long pricePaise = (long)Math.Round(priceRupees.Value * 100m);
-                    await http.PutAsJsonAsync($"api/games/{created.Id}/price",
-                    new { PricePaise = pricePaise, Currency = "INR" });
+                    @* await http.PutAsJsonAsync($"api/games/{created.Id}/price",
+                    new { PricePaise = pricePaise, Currency = "INR" }); *@
+                    var price = await PricingService.SetPriceForGameAsync(responseDto.Id, pricePaise, "INR", null);
+                    if (price == null)
+                    {
+                        Console.WriteLine("Failed to set price for the game.");
+                    }
                 }
 
                 Navigation.NavigateTo("/marketplace");
             }
             else
             {
-                Console.WriteLine("Game creation failed: " + await response.Content.ReadAsStringAsync());
+                Console.WriteLine("Game creation failed: ");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Error: " + ex.Message);
+            Console.WriteLine("Error: " + ex.StackTrace);
         }
         finally
         {
             _uploading = false;
         }
     }
-
-    private class UploadResponse
-    {
-        public string Url { get; set; } = string.Empty;
-    }
-    private class GameDto
+    @* private class GameDto
     {
         public Guid Id { get; set; }
         [Required]
@@ -199,5 +247,5 @@
         public string ThumbnailUrl { get; set; } = string.Empty;
         [Required]
         public string GameUrl { get; set; } = string.Empty;
-    }
+    } *@
 }

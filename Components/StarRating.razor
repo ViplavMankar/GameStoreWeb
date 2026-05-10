@@ -1,12 +1,18 @@
-﻿@using Microsoft.JSInterop
+﻿@using GameStoreWeb.Models
+@using Microsoft.JSInterop
 @inject IJSRuntime JS
 
 @using System.Net.Http.Headers
 @using System.Net.Http.Json;
-@inject IHttpClientFactory HttpClientFactory
+@using GameStoreWeb.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@* @inject IHttpClientFactory HttpClientFactory *@
 @inject NavigationManager Navigation
+@inject IGameRatingService GameRatingService
+@inject AuthenticationStateProvider AuthStateProvider
 
 @using Microsoft.AspNetCore.Components.Web
+@using System.Security.Claims
 
 <div class="flex items-center space-x-2">
     @for (int i = 1; i <= 5; i++)
@@ -34,8 +40,26 @@
     }
     private async Task LoadRatingDataAsync()
     {
-        var http = HttpClientFactory.CreateClient("GameStoreApiService");
-        var result = await http.GetFromJsonAsync<RatingResponse>($"api/games/{GameId}/ratings");
+        @* var http = HttpClientFactory.CreateClient("GameStoreApiService"); *@
+        @* var result = await http.GetFromJsonAsync<RatingResponse>($"api/games/{GameId}/ratings"); *@
+        var (averageRating, totalVotes) = await GameRatingService.GetGameRatingStatsAsync(GameId);
+
+        int? userRating = null;
+        @* if (User.Identity?.IsAuthenticated == true)
+        { *@
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        @* userId = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value; *@
+        var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        userRating = await GameRatingService.GetUserRatingAsync(GameId, userId);
+        @* } *@
+        RatingResponse result = new RatingResponse
+        {
+            GameId = GameId,
+            AverageRating = averageRating,
+            TotalVotes = totalVotes,
+            UserRating = userRating
+        };
         if (result is not null)
         {
             AverageRating = result.AverageRating;
@@ -47,24 +71,41 @@
     private async Task Rate(int stars)
     {
         if (IsReadOnly) return;
-        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
         var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
         if (!string.IsNullOrEmpty(token))
         {
             http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
-        var response = await http.PostAsJsonAsync($"api/games/{GameId}/ratings", stars);
-        if (response.IsSuccessStatusCode)
+        var response = await http.PostAsJsonAsync($"api/games/{GameId}/ratings", stars); *@
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        @* userId = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value; *@
+        var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        await GameRatingService.RateGameAsync(GameId, userId, stars);
+
+        var (averageRating, totalVotes) = await GameRatingService.GetGameRatingStatsAsync(GameId);
+
+        RatingResponse rating = new RatingResponse
         {
-            var updated = await response.Content.ReadFromJsonAsync<RatingResponse>();
-            if (updated is not null)
-            {
-                AverageRating = updated.AverageRating;
-                UserRating = updated.UserRating;
-                TotalVotes = updated.TotalVotes;
-            }
+            GameId = GameId,
+            AverageRating = averageRating,
+            TotalVotes = totalVotes,
+            UserRating = stars
+        };
+
+        @* if (response.IsSuccessStatusCode)
+        { *@
+        var updated = rating;
+        if (updated is not null)
+        {
+            AverageRating = updated.AverageRating;
+            UserRating = updated.UserRating;
+            TotalVotes = updated.TotalVotes;
         }
+        @* } *@
     }
 
     private string GetStarClass(int starIndex)

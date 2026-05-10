@@ -2,6 +2,8 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
 @inject IHttpClientFactory HttpClientFactory
+@using GameStoreWeb.Services
+@inject IS3Service S3Service
 
 <h3>JPG to PDF Converter</h3>
 
@@ -71,21 +73,33 @@
 
         isUploading = true;
 
-        using var content = new MultipartFormDataContent();
+        @* using var content = new MultipartFormDataContent(); *@
         using var fileStream = selectedFile.OpenReadStream(10 * 1024 * 1024);
-        using var streamContent = new StreamContent(fileStream);
-
-        streamContent.Headers.ContentType =
-        new System.Net.Http.Headers.MediaTypeHeaderValue(selectedFile.ContentType);
-
-        content.Add(streamContent, "file", selectedFile.Name);
-        var http = HttpClientFactory.CreateClient("GameStoreApiService");
-
-        var response = await http.PostAsync("api/files/jpg-to-pdf", content);
-
-        if (response.IsSuccessStatusCode)
+        byte[] imageBytes;
+        using (var ms = new MemoryStream())
         {
-            var pdfBytes = await response.Content.ReadAsByteArrayAsync();
+            await fileStream.CopyToAsync(ms);
+            imageBytes = ms.ToArray();
+        }
+        @* using var streamContent = new StreamContent(fileStream); *@
+
+        @* streamContent.Headers.ContentType =
+        new System.Net.Http.Headers.MediaTypeHeaderValue(selectedFile.ContentType); *@
+
+        @* content.Add(streamContent, "file", selectedFile.Name);
+        var http = HttpClientFactory.CreateClient("GameStoreApiService"); *@
+
+        @* var response = await http.PostAsync("api/files/jpg-to-pdf", content); *@
+        var pdfBytes = S3Service.ConvertSingleImageToPdf(imageBytes);
+
+        if (pdfBytes == null)
+        {
+            Console.WriteLine("Conversion failed");
+            isUploading = false;
+            return;
+        }
+        else
+        {
             downloadUrl = $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
         }
 

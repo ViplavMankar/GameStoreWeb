@@ -1,86 +1,95 @@
 ﻿@page "/profile"
-@using Microsoft.JSInterop
-@inject IJSRuntime JS
+@using GameStoreWeb.Services
 @using System.Net.Http.Headers;
 @using Microsoft.AspNetCore.Components.Authorization
-
-@inject IHttpClientFactory HttpClientFactory
+@inject IProfileService ProfileService
+@inject AuthenticationStateProvider AuthStateProvider
+@using System.Security.Claims;
 
 <h2>Player Profile</h2>
 
-@if (profile == null)
-{
-    <p>Loading...</p>
-}
-else
-{
-    <div class="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#020617] text-white p-6">
+<AuthorizeView>
+    <Authorized>
+        @if (profile == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <div class="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#020617] text-white p-6">
 
-        <!-- Header -->
-        <div class="flex items-center gap-4 mb-8">
-            <div
-                class="w-16 h-16 rounded-full bg-cyan-500 flex items-center justify-center text-2xl font-bold shadow-lg shadow-cyan-500/50">
-                @profile.Username.Substring(0, 1).ToUpper()
-            </div>
-            <div>
-                <h2 class="text-2xl font-bold text-cyan-400">@profile.Username</h2>
-                <p class="text-gray-400">Gamer Profile</p>
-            </div>
-        </div>
+                <!-- Header -->
+                <div class="flex items-center gap-4 mb-8">
+                    <div
+                        class="w-16 h-16 rounded-full bg-cyan-500 flex items-center justify-center text-2xl font-bold shadow-lg shadow-cyan-500/50">
+                        @profile.Username.Substring(0, 1).ToUpper()
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-cyan-400">@profile.Username</h2>
+                        <p class="text-gray-400">Gamer Profile</p>
+                    </div>
+                </div>
 
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
 
-            <div class="bg-[#020617] p-4 rounded-xl border border-cyan-500 shadow-lg shadow-cyan-500/20">
-                <p class="text-gray-400 text-sm">Total Sessions</p>
-                <h3 class="text-xl font-bold text-cyan-400">@profile.TotalSessions</h3>
-            </div>
+                    <div class="bg-[#020617] p-4 rounded-xl border border-cyan-500 shadow-lg shadow-cyan-500/20">
+                        <p class="text-gray-400 text-sm">Total Sessions</p>
+                        <h3 class="text-xl font-bold text-cyan-400">@profile.TotalSessions</h3>
+                    </div>
 
-            <div class="bg-[#020617] p-4 rounded-xl border border-pink-500 shadow-lg shadow-pink-500/20">
-                <p class="text-gray-400 text-sm">Games Played</p>
-                <h3 class="text-xl font-bold text-pink-400">@profile.TotalGamesPlayed</h3>
-            </div>
+                    <div class="bg-[#020617] p-4 rounded-xl border border-pink-500 shadow-lg shadow-pink-500/20">
+                        <p class="text-gray-400 text-sm">Games Played</p>
+                        <h3 class="text-xl font-bold text-pink-400">@profile.TotalGamesPlayed</h3>
+                    </div>
 
-            <div class="bg-[#020617] p-4 rounded-xl border border-green-400 shadow-lg shadow-green-400/20">
-                <p class="text-gray-400 text-sm">Playtime</p>
-                <h3 class="text-xl font-bold text-green-400">
-                    @(Math.Round(profile.TotalPlaytimeMinutes / 60.0, 2)) hrs
-                </h3>
-            </div>
+                    <div class="bg-[#020617] p-4 rounded-xl border border-green-400 shadow-lg shadow-green-400/20">
+                        <p class="text-gray-400 text-sm">Playtime</p>
+                        <h3 class="text-xl font-bold text-green-400">
+                            @(Math.Round(profile.TotalPlaytimeMinutes / 60.0, 2)) hrs
+                        </h3>
+                    </div>
 
-            <div class="bg-[#020617] p-4 rounded-xl border border-yellow-400 shadow-lg shadow-yellow-400/20">
-                <p class="text-gray-400 text-sm">Favorite Game</p>
-                <h3 class="text-lg font-bold text-yellow-300">
-                    @(profile.FavoriteGame ?? "N/A")
-                </h3>
-            </div>
+                    <div class="bg-[#020617] p-4 rounded-xl border border-yellow-400 shadow-lg shadow-yellow-400/20">
+                        <p class="text-gray-400 text-sm">Favorite Game</p>
+                        <h3 class="text-lg font-bold text-yellow-300">
+                            @(profile.FavoriteGame ?? "N/A")
+                        </h3>
+                    </div>
 
-        </div>
+                </div>
 
-        <!-- Recent Activity -->
-        <div class="bg-[#020617] p-6 rounded-xl border border-purple-500 shadow-lg shadow-purple-500/20">
-            <h3 class="text-xl font-bold text-purple-400 mb-4">Recent Activity</h3>
+                <!-- Recent Activity -->
+                <div class="bg-[#020617] p-6 rounded-xl border border-purple-500 shadow-lg shadow-purple-500/20">
+                    <h3 class="text-xl font-bold text-purple-400 mb-4">Recent Activity</h3>
 
-            @if (profile.RecentGames.Any())
-            {
-                <div class="space-y-3">
-                    @foreach (var game in profile.RecentGames)
+                    @if (profile.RecentGames.Any())
                     {
-                        <div class="flex justify-between items-center bg-[#0f172a] p-3 rounded-lg">
-                            <span class="text-gray-300">@game.GameTitle</span>
-                            <span class="text-sm text-gray-400">@game.DurationMinutes min</span>
+                        <div class="space-y-3">
+                            @foreach (var game in profile.RecentGames)
+                            {
+                                <div class="flex justify-between items-center bg-[#0f172a] p-3 rounded-lg">
+                                    <span class="text-gray-300">@game.GameTitle</span>
+                                    <span class="text-sm text-gray-400">@game.DurationMinutes min</span>
+                                </div>
+                            }
                         </div>
                     }
+                    else
+                    {
+                        <p class="text-gray-500">No recent activity</p>
+                    }
                 </div>
-            }
-            else
-            {
-                <p class="text-gray-500">No recent activity</p>
-            }
-        </div>
 
-    </div>
-}
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>You must <a href="/Account/Login">log in</a>.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+
 
 @code {
 
@@ -88,21 +97,50 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var client = HttpClientFactory.CreateClient("GameStoreApiService");
+        @* var client = HttpClientFactory.CreateClient("GameStoreApiService");
 
         var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
         if (!string.IsNullOrEmpty(token))
         {
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        } *@
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user?.Identity == null || !user.Identity.IsAuthenticated)
+        {
+            return; // UI will handle NotAuthorized
         }
+
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+        {
+            return;
+        }
+
+        var userId = Guid.Parse(userIdClaim.Value);
         try
         {
-            profile = await client.GetFromJsonAsync<PlayerProfileDto>("api/profile/player-profile");
+            @* profile = await client.GetFromJsonAsync<PlayerProfileDto>("api/profile/player-profile"); *@
+            var playerProfile = await ProfileService.GetPlayerProfileAsync(userId);
+            profile = new PlayerProfileDto
+            {
+                Username = playerProfile.Username,
+                TotalSessions = playerProfile.TotalSessions,
+                TotalGamesPlayed = playerProfile.TotalGamesPlayed,
+                TotalPlaytimeMinutes = playerProfile.TotalPlaytimeMinutes,
+                FavoriteGame = playerProfile.FavoriteGame,
+                RecentGames = playerProfile.RecentGames.Select(g => new RecentGameDto
+                {
+                    GameTitle = g.GameTitle,
+                    DurationMinutes = g.DurationMinutes,
+                    PlayedAt = g.PlayedAt
+                }).ToList()
+            };
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to load games: {ex.Message}");
+            Console.Error.WriteLine($"Failed to load profile: {ex.Message}");
         }
     }
 

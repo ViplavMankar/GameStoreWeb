@@ -1,13 +1,16 @@
 ﻿@page "/myCollection";
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
+@using GameStoreWeb.Services
 
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation;
+@inject ICollectionService CollectionService;
 @using System.Net.Http.Headers;
 @using Microsoft.AspNetCore.Components.Authorization;
 @using Microsoft.AspNetCore.Components.Web;
-@using GameStoreWeb.Models;
+@using System.Security.Claims;
+@using GameStoreWeb.DTOs;
 @using GameStoreWeb.Components;
 @inject AuthenticationStateProvider AuthStateProvider;
 
@@ -31,7 +34,17 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 @foreach (var game in games)
                 {
-                    <GameTile Game="game" IsInCollection="true" />
+                    Models.GameReadDto sendGame = new Models.GameReadDto
+                    {
+                        Id = game.Id,
+                        Title = game.Title,
+                        Description = game.Description,
+                        GameUrl = game.GameUrl,
+                        ThumbnailUrl = game.ThumbnailUrl,
+                        AuthorUserId = game.AuthorUserId,
+                        CreatedAt = game.CreatedAt
+                    };
+                    <GameTile Game="sendGame" IsInCollection="true" />
                 }
             </div>
         }
@@ -55,22 +68,24 @@
             return;
         }
 
-        var userId = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
-        if (string.IsNullOrEmpty(userId))
+        var userIdString = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+        if (string.IsNullOrEmpty(userIdString))
         {
             @* Navigation.NavigateTo("/login"); *@
             return;
         }
         try
         {
-            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
             var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
             if (!string.IsNullOrEmpty(token))
             {
                 http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            }
-            games = await http.GetFromJsonAsync<List<GameReadDto>>($"/api/collections/GetAll");
+            } *@
+            @* games = await http.GetFromJsonAsync<List<GameReadDto>>($"/api/collections/GetAll"); *@
+            var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            games = (await CollectionService.GetUserCollectionAsync(userId)).ToList();
         }
         catch (Exception ex)
         {

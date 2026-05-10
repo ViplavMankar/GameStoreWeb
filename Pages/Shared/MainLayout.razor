@@ -219,7 +219,6 @@
 @code {
     private HubConnection? hubConnection;
     private AchievementDto? latestAchievement;
-    private string apiBaseUrl = "";
 
     [Inject] NavigationManager Nav { get; set; }
 
@@ -227,16 +226,8 @@
     {
         if (firstRender)
         {
-            if (Environment.GetEnvironmentVariable("RENDER") != null)
-            {
-                apiBaseUrl = Environment.GetEnvironmentVariable("GAMESTORE_API_URL");
-            }
-            else
-            {
-                apiBaseUrl = "https://localhost:7054";
-            }
             hubConnection = new HubConnectionBuilder()
-            .WithUrl(Nav.ToAbsoluteUri($"{apiBaseUrl}/realtimehub"), options =>
+            .WithUrl(Nav.ToAbsoluteUri("/realtimehub"), options =>
             {
                 options.AccessTokenProvider = async () =>
     {

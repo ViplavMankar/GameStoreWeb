@@ -5,6 +5,12 @@
 @inject IJSRuntime JS
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization;
+@using System.Security.Claims;
+@using GameStoreWeb.DTOs
+@using GameStoreWeb.Services
+@inject IBlogService BlogService
+@inject AuthenticationStateProvider AuthStateProvider;
 
 <h3>EditBlog</h3>
 
@@ -41,15 +47,16 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
 
         var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
         if (!string.IsNullOrEmpty(token))
         {
             http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
-        blog = await http.GetFromJsonAsync<BlogReadUserDto>($"/api/blogs/Get/{Id}");
+        } *@
+        @* blog = await http.GetFromJsonAsync<BlogReadUserDto>($"/api/blogs/Get/{Id}"); *@
+        blog = await BlogService.GetByIdWithUsernameAsync(Id);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -66,14 +73,29 @@ else
     {
         blog.Content = await JS.InvokeAsync<string>("getTinyMCEContent", "editor");
 
-        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
 
         var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
         if (!string.IsNullOrEmpty(token))
         {
             http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        } *@
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (!user.Identity.IsAuthenticated)
+        {
+            @* Navigation.NavigateTo("/login"); *@
+            return;
         }
+
+        var userIdString = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+        if (string.IsNullOrEmpty(userIdString))
+        {
+            @* Navigation.NavigateTo("/login"); *@
+            return;
+        }
+        var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
         blogEditDto = new BlogEditDto
         {
@@ -81,9 +103,10 @@ else
             Content = blog.Content
         };
 
-        var response = await http.PutAsJsonAsync($"/api/blogs/edit/{Id}", blogEditDto);
+        @* var response = await http.PutAsJsonAsync($"/api/blogs/edit/{Id}", blogEditDto); *@
+        var response = await BlogService.EditAsync(Id, blogEditDto, userId);
 
-        if (response.IsSuccessStatusCode)
+        if (response != null)
         {
             Navigation.NavigateTo("/myblogs");
         }
@@ -91,22 +114,5 @@ else
         {
             Console.WriteLine("Error updating blog");
         }
-    }
-
-    public class BlogEditDto
-    {
-        public string Title { get; set; }
-        public string Content { get; set; }
-    }
-
-    public class BlogReadUserDto
-    {
-        public Guid Id { get; set; }
-        public string Title { get; set; }
-        public string Content { get; set; }
-        public Guid? AuthorUserId { get; set; }
-        public string? AuthorUsername { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
     }
 }

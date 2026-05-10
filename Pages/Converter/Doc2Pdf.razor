@@ -2,6 +2,8 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inject IHttpClientFactory HttpClientFactory
 @using Microsoft.AspNetCore.Components.Web
+@using GameStoreWeb.Services
+@inject IS3Service S3Service
 
 <div class="mb-3">
     <label class="form-label">Select DOCX File</label>
@@ -45,34 +47,32 @@
         if (_docFile == null)
             return;
 
-        var content = new MultipartFormDataContent();
+        @* var content = new MultipartFormDataContent(); *@
 
         var stream = _docFile.OpenReadStream(maxAllowedSize: 10_000_000);
 
-        content.Add(new StreamContent(stream), "file", _docFile.Name);
+        var fileId = Guid.NewGuid();
+        var extension = Path.GetExtension(_docFile.Name);
 
-        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        var inputKey = $"documents/{fileId}/input{extension}";
+        var outputKey = $"documents/{fileId}/output.pdf";
 
-        var response = await http.PostAsync("api/files/upload-docx", content);
+        @* content.Add(new StreamContent(stream), "file", _docFile.Name); *@
 
-        if (!response.IsSuccessStatusCode)
+        @* var http = HttpClientFactory.CreateClient("GameStoreApiService"); *@
+
+        @* var response = await http.PostAsync("api/files/upload-docx", content); *@
+        await S3Service.UploadFileAsync(stream, inputKey, _docFile.ContentType);
+
+        var pdfUrl = await S3Service.ConvertDocxToPdf(fileId, inputKey, outputKey);
+
+        if (string.IsNullOrEmpty(pdfUrl))
         {
-            var errorContent = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"Upload failed: {response.StatusCode}");
-            Console.WriteLine($"Error: {errorContent}");
+            Console.WriteLine($"Upload failed");
             return;
         }
 
-        var result = await response.Content.ReadFromJsonAsync<UploadResponse>();
-
-        uploadedUrl = result?.PdfUrl ?? "No URL returned";
+        uploadedUrl = pdfUrl ?? "No URL returned";
         StateHasChanged();
-    }
-
-    public class UploadResponse
-    {
-        public Guid FileId { get; set; }
-        public string PdfUrl { get; set; }
-
     }
 }

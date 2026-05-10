@@ -4,6 +4,9 @@
 @using Microsoft.JSInterop;
 @using Microsoft.AspNetCore.Components.Web
 @inject IJSRuntime JS
+@using GameStoreWeb.Services
+@using GameStoreWeb.DTOs
+@inject IStatisticsService StatisticsService
 
 <h2 class="text-white text-xl mb-4">Player Growth</h2>
 
@@ -49,20 +52,16 @@
 
     private async Task LoadChart()
     {
-        var client = HttpClientFactory.CreateClient("GameStoreApiService");
+        List<DailyActivePlayersDto> data;
+        @* var client = HttpClientFactory.CreateClient("GameStoreApiService"); *@
 
-        var data = await client.GetFromJsonAsync<List<DailyActivePlayersDto>>(
-        $"api/statistics/daily-active-players?days={selectedDays}");
+        @* var data = await client.GetFromJsonAsync<List<DailyActivePlayersDto>>(
+        $"api/statistics/daily-active-players?days={selectedDays}"); *@
+        data = await StatisticsService.GetDailyActivePlayersAsync(selectedDays);
 
         var labels = data.Select(x => x.Date.ToString("MMM dd")).ToArray();
         var players = data.Select(x => x.ActivePlayers).ToArray();
 
         await JS.InvokeVoidAsync("renderPlayerGrowthChart", labels, players);
-    }
-
-    public class DailyActivePlayersDto
-    {
-        public DateTime Date { get; set; }
-        public int ActivePlayers { get; set; }
     }
 }

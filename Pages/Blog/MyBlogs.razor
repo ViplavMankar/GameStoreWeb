@@ -7,8 +7,12 @@
 @inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web
+@using System.Security.Claims
+@using GameStoreWeb.DTOs
 @using System.Net.Http.Headers
 @using GameStoreWeb.Components;
+@using GameStoreWeb.Services;
+@inject IBlogService BlogService;
 
 <h3>MyBlogs</h3>
 
@@ -39,18 +43,34 @@ else
 }
 
 @code {
-    private List<BlogDto> blogs;
+    private List<BlogReadUserDto> blogs;
 
     protected override async Task OnInitializedAsync()
     {
-        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
         var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
         if (!string.IsNullOrEmpty(token))
         {
             http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        } *@
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (!user.Identity.IsAuthenticated)
+        {
+            @* Navigation.NavigateTo("/login"); *@
+            return;
         }
-        blogs = await http.GetFromJsonAsync<List<BlogDto>>($"api/blogs/Mine");
+
+        var userIdString = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+        if (string.IsNullOrEmpty(userIdString))
+        {
+            @* Navigation.NavigateTo("/login"); *@
+            return;
+        }
+        var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        @* blogs = await http.GetFromJsonAsync<List<BlogDto>>($"api/blogs/Mine"); *@
+        blogs = await BlogService.GetMyBlogsAsync(userId);
     }
 
     private void EditBlog(Guid id)
@@ -63,35 +83,39 @@ else
         var confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete this blog?");
         if (!confirmed) return;
 
-        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
         var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
         if (!string.IsNullOrEmpty(token))
         {
             http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        } *@
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (!user.Identity.IsAuthenticated)
+        {
+            @* Navigation.NavigateTo("/login"); *@
+            return;
         }
-        var response = await http.DeleteAsync($"api/blogs/Delete/{id}");
-        if (response.IsSuccessStatusCode)
+
+        var userIdString = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+        if (string.IsNullOrEmpty(userIdString))
+        {
+            @* Navigation.NavigateTo("/login"); *@
+            return;
+        }
+        var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        @* var response = await http.DeleteAsync($"api/blogs/Delete/{id}"); *@
+        var response = await BlogService.DeleteAsync(id, userId);
+        if (response)
         {
             blogs = blogs.Where(b => b.Id != id).ToList();
             StateHasChanged();
         }
         else
         {
-            var errorMessage = await response.Content.ReadAsStringAsync();
-            await JS.InvokeVoidAsync("alert", $"Error deleting blog: {errorMessage}");
+            await JS.InvokeVoidAsync("alert", $"Error deleting blog. Please try again.");
             Console.WriteLine("Failed to delete blog");
         }
-    }
-
-    public class BlogDto
-    {
-        public Guid Id { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string Content { get; set; } = string.Empty;
-        public Guid? AuthorUserId { get; set; }
-        public string? AuthorUsername { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
     }
 }
