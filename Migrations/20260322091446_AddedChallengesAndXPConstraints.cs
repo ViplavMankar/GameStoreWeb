@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace GameStore.Api.Migrations
+namespace GameStoreWeb.Migrations
 {
     /// <inheritdoc />
     public partial class AddedChallengesAndXPConstraints : Migration

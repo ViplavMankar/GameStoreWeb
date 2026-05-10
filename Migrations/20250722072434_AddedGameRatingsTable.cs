@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
-namespace GameStore.Api.Migrations
+namespace GameStoreWeb.Migrations
 {
     /// <inheritdoc />
     public partial class AddedGameRatingsTable : Migration
