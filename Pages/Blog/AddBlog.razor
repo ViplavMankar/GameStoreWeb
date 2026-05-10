@@ -7,6 +7,12 @@
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web;
+@using System.Security.Claims
+@using GameStoreWeb.Services;
+@using GameStoreWeb.DTOs;
+@inject IAiRewriteService AiRewriteService
+@inject IBlogService BlogService
+@inject AuthenticationStateProvider AuthStateProvider;
 
 <h3> Write a Blog</h3>
 
@@ -45,8 +51,7 @@
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" role="switch" id="switchRewriteExisting"
                         @bind="_rewriteExisting" />
-                    <label class="form-check-label" for="switchRewriteExisting">Rewrite current editor content (off =
-                        generate fresh)</label>
+                    <label class="form-check-label" for="switchRewriteExisting">Rewrite current editor content</label>
                 </div>
                 <button class="btn btn-dark" @onclick="RewriteWithAI" disabled="@_aiBusy">
                     @(_aiBusy ? "Rewriting…" : "Rewrite with AI")
@@ -97,10 +102,10 @@
         _aiError = null; _aiBusy = true;
         try
         {
-            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
             var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
             if (!string.IsNullOrEmpty(token))
-                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token); *@
 
 
             string? currentHtml = _editorInitialized
@@ -123,16 +128,16 @@
             };
 
 
-            var res = await http.PostAsJsonAsync("/api/rewrite", req);
-            if (!res.IsSuccessStatusCode)
+            @* var res = await http.PostAsJsonAsync("/api/rewrite", req); *@
+            var res = await AiRewriteService.RewriteAsync(req, CancellationToken.None);
+
+            if (res == null)
             {
-                _aiError = $"Rewrite failed: {(int)res.StatusCode} - {await res.Content.ReadAsStringAsync()}";
+                _aiError = "Rewrite failed";
                 return;
             }
 
-
-            var data = await res.Content.ReadFromJsonAsync<RewriteResult>();
-            var html = data?.Markdown ?? string.Empty; // we asked the model to return HTML inside Markdown field
+            var html = res?.Markdown ?? string.Empty; // we asked the model to return HTML inside Markdown field
             if (_editorInitialized)
             {
                 await JS.InvokeVoidAsync("setTinyMCEContent", "blogEditor", html);
@@ -154,30 +159,45 @@
         if (_editorInitialized)
         {
             _blogContent = await JS.InvokeAsync<string>("getTinyMCEContent", "blogEditor");
-            var blog = new
+            var blog = new BlogCreateDto
             {
                 Title = _blogTitle,
                 Content = _blogContent
             };
             try
             {
-                var http = HttpClientFactory.CreateClient("GameStoreApiService");
+                @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
 
                 var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
                 if (!string.IsNullOrEmpty(token))
                 {
                     http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                } *@
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                if (!user.Identity.IsAuthenticated)
+                {
+                    @* Navigation.NavigateTo("/login"); *@
+                    return;
                 }
-                var response = await http.PostAsJsonAsync("api/Blogs/Create", blog);
-                if (response.IsSuccessStatusCode)
+
+                var userIdString = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+                if (string.IsNullOrEmpty(userIdString))
+                {
+                    @* Navigation.NavigateTo("/login"); *@
+                    return;
+                }
+                var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                @* var response = await http.PostAsJsonAsync("api/Blogs/Create", blog); *@
+                var blogDto = await BlogService.CreateAsync(blog, userId);
+                if (blogDto != null)
                 {
                     Navigation.NavigateTo("/blogsite");
                 }
                 else
                 {
-                    var error = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"Error saving blog: {error}");
+                    Console.WriteLine($"Error saving blog");
                 }
             }
             catch (Exception ex)
@@ -185,27 +205,5 @@
                 Console.WriteLine($"Exception while saving blog: {ex.Message}");
             }
         }
-    }
-
-    // Local DTOs so the component compiles without referencing shared models
-    public class RewriteRequest
-    {
-        public string? Input { get; set; }
-        public string? Prompt { get; set; }
-        public string? Audience { get; set; }
-        public string? Tone { get; set; }
-        public string? StyleGuide { get; set; }
-        public string[]? SeoKeywords { get; set; }
-        public int? TargetWordCount { get; set; }
-        public bool UseFrontMatter { get; set; } = false;
-        public bool AddSummary { get; set; } = false;
-        public bool AddOutline { get; set; } = false;
-    }
-    public class RewriteResult
-    {
-        public string? Markdown { get; set; }
-        public string? Title { get; set; }
-        public string? Summary { get; set; }
-        public int EstimatedWordCount { get; set; }
     }
 }

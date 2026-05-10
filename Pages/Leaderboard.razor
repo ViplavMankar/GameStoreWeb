@@ -1,71 +1,85 @@
 ﻿@page "/leaderboard"
 @inject IHttpClientFactory HttpClientFactory
 @using Microsoft.AspNetCore.Components.Web;
+@using Microsoft.AspNetCore.Components.Authorization
+@using GameStoreWeb.Services;
+@inject ILeaderboardService LeaderboardService
+@using GameStoreWeb.DTOs;
 
 <h3 class="mb-4">🏆 Leaderboard</h3>
 
-@if (leaderboard == null)
-{
-    <p>Loading leaderboard...</p>
-}
-else if (!leaderboard.Any())
-{
-    <p>No data available.</p>
-}
-else
-{
-    <div class="mb-3">
-        <button class="btn btn-sm me-2 @(mode == "playtime" ? "btn-success" : "btn-outline-light")"
-            @onclick="@(() => SwitchMode("playtime"))">
-            ⏱️ Playtime
-        </button>
+<AuthorizeView>
+    <Authorized>
+        @if (leaderboard == null)
+        {
+            <p>Loading leaderboard...</p>
+        }
+        else if (!leaderboard.Any())
+        {
+            <p>No data available.</p>
+        }
+        else
+        {
+            <div class="mb-3">
+                <button class="btn btn-sm me-2 @(mode == "playtime" ? "btn-success" : "btn-outline-light")"
+                    @onclick="@(() => SwitchMode("playtime"))">
+                    ⏱️ Playtime
+                </button>
 
-        <button class="btn btn-sm @(mode == "xp" ? "btn-success" : "btn-outline-light")"
-            @onclick="@(() => SwitchMode("xp"))">
-            ⭐ XP
-        </button>
-    </div>
-    <table class="table table-bordered table-hover text-white">
-        <thead class="table-light">
-            <tr>
-                <th># Rank</th>
-                <th>Username</th>
-                <th>@(mode == "xp" ? "XP" : "Playtime")</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var entry in leaderboard)
-            {
-                <tr>
-                    <td>
-                        @if (entry.Rank == 1)
-                        {
-                            <span>🥇</span>
-                        }
-                        else if (entry.Rank == 2)
-                        {
-                            <span>🥈</span>
-                        }
-                        else if (entry.Rank == 3)
-                        {
-                            <span>🥉</span>
-                        }
-                        else
-                        {
-                            @entry.Rank
-                        }
-                </td>
-                <td>@entry.Username</td>
-                <td>
-                    @(mode == "xp"
-                                    ? $"{entry.Value} XP"
-                                    : FormatTime(entry.Value))
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+                <button class="btn btn-sm @(mode == "xp" ? "btn-success" : "btn-outline-light")"
+                    @onclick="@(() => SwitchMode("xp"))">
+                    ⭐ XP
+                </button>
+            </div>
+            <table class="table table-bordered table-hover text-white">
+                <thead class="table-light">
+                    <tr>
+                        <th># Rank</th>
+                        <th>Username</th>
+                        <th>@(mode == "xp" ? "XP" : "Playtime")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in leaderboard)
+                    {
+                        <tr>
+                            <td>
+                                @if (entry.Rank == 1)
+                                {
+                                    <span>🥇</span>
+                                }
+                                else if (entry.Rank == 2)
+                                {
+                                    <span>🥈</span>
+                                }
+                                else if (entry.Rank == 3)
+                                {
+                                    <span>🥉</span>
+                                }
+                                else
+                                {
+                                    @entry.Rank
+                                }
+                        </td>
+                        <td>@entry.Username</td>
+                        <td>
+                            @(mode == "xp"
+                                                    ? $"{entry.Value} XP"
+                                                    : FormatTime(entry.Value))
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning text-center">
+            <p>You must <a href="/Account/Login">log in</a> to view the leaderboard.</p>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
 
 @code {
     private List<LeaderboardDto>? leaderboard;
@@ -80,13 +94,20 @@ else
     {
         try
         {
-            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            @* var http = HttpClientFactory.CreateClient("GameStoreApiService"); *@
 
-            var url = mode == "xp"
+            @* var url = mode == "xp"
             ? "api/leaderboard/xp"
-            : "api/leaderboard/playtime";
-
-            leaderboard = await http.GetFromJsonAsync<List<LeaderboardDto>>(url);
+            : "api/leaderboard/playtime"; *@
+            if (mode == "xp")
+            {
+                leaderboard = await LeaderboardService.GetXPLeaderboardAsync();
+            }
+            else
+            {
+                leaderboard = await LeaderboardService.GetPlaytimeLeaderboardAsync();
+            }
+            @* leaderboard = await http.GetFromJsonAsync<List<LeaderboardDto>>(url); *@
         }
         catch (Exception ex)
         {
@@ -125,10 +146,10 @@ else
         return $"{ts.Hours}h {ts.Minutes}m {ts.Seconds}s";
     }
 
-    public class LeaderboardDto
+    @* public class LeaderboardDto
     {
         public int Rank { get; set; }
         public string Username { get; set; }
         public int Value { get; set; }
-    }
+    } *@
 }

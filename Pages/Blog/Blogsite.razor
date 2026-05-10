@@ -1,6 +1,9 @@
 ﻿@page "/blogsite"
+@using GameStoreWeb.DTOs
+@using GameStoreWeb.Services;
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
+@inject IBlogService BlogService
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Authorization
 
@@ -49,28 +52,19 @@
 </AuthorizeView>
 
 @code {
-    private List<BlogDto>? _blogs;
+    private List<BlogReadUserDto>? _blogs;
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var client = HttpClientFactory.CreateClient("GameStoreApiService");
-            _blogs = await client.GetFromJsonAsync<List<BlogDto>>("api/blogs/GetAll");
+            @* var client = HttpClientFactory.CreateClient("GameStoreApiService"); *@
+            @* _blogs = await client.GetFromJsonAsync<List<BlogDto>>("api/blogs/GetAll"); *@
+            _blogs = await BlogService.GetAllAsync();
         }
         catch (Exception ex)
         {
             Console.WriteLine("Failed to load blogs: " + ex.Message);
-            _blogs = new List<BlogDto>();
+            _blogs = new List<BlogReadUserDto>();
         }
-    }
-    public class BlogDto
-    {
-        public Guid Id { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string Content { get; set; } = string.Empty;
-        public Guid? AuthorUserId { get; set; }
-        public string? AuthorUsername { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
     }
 }

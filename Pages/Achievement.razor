@@ -1,44 +1,56 @@
 ﻿@page "/achievements"
-@inject IHttpClientFactory HttpClientFactory
-@using Microsoft.JSInterop;
-@inject IJSRuntime JS;
+@using GameStoreWeb.Services
+@inject IAchievementService AchievementService
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@using System.Security.Claims;
 
-<h3 class="mb-4">🏆 Achievements</h3>
+<AuthorizeView>
+    <Authorized>
+        <h3 class="mb-4">🏆 Achievements</h3>
 
-@if (achievements == null)
-{
-    <p>Loading...</p>
-}
-else
-{
-    <div class="achievement-grid">
-        @foreach (var achievement in achievements)
+        @if (achievements == null)
         {
-            <div class="achievement-card @(achievement.IsUnlocked ? "unlocked" : "locked")">
-                <img src="@achievement.Icon" alt="icon" />
-
-                <h5>@achievement.Name</h5>
-                <p>@achievement.Description</p>
-
-                @if (achievement.IsUnlocked)
+            <p>Loading...</p>
+        }
+        else
+        {
+            <div class="achievement-grid">
+                @foreach (var achievement in achievements)
                 {
-                    <span class="badge bg-success">Unlocked</span>
-                }
-                else
-                {
-                    <span class="badge bg-secondary">Locked</span>
+                    <div class="achievement-card @(achievement.IsUnlocked ? "unlocked" : "locked")">
+                        <img src="@achievement.Icon" alt="icon" />
+
+                        <h5>@achievement.Name</h5>
+                        <p>@achievement.Description</p>
+
+                        @if (achievement.IsUnlocked)
+                        {
+                            <span class="badge bg-success">Unlocked</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Locked</span>
+                        }
+                    </div>
                 }
             </div>
         }
-    </div>
-}
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning text-center">
+            <p>You must <a href="/Account/Login">log in</a> to view your achievements.</p>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
 
 @code {
     private List<AchievementDto>? achievements;
 
     protected override async Task OnInitializedAsync()
     {
-        var http = HttpClientFactory.CreateClient("GameStoreApiService");
+        @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
 
         var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
@@ -46,9 +58,39 @@ else
         {
             http.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        } *@
+
+        @* achievements = await http.GetFromJsonAsync<List<AchievementDto>>("api/achievements/my"); *@
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user?.Identity == null || !user.Identity.IsAuthenticated)
+        {
+            return; // UI will handle NotAuthorized
         }
 
-        achievements = await http.GetFromJsonAsync<List<AchievementDto>>("api/achievements/my");
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+        {
+            return;
+        }
+
+        var userId = Guid.Parse(userIdClaim.Value);
+        try
+        {
+            achievements = (await AchievementService.GetUserAchievementsAsync())
+            .Select(a => new AchievementDto
+            {
+                Name = a.Name,
+                Description = a.Description,
+                Icon = a.Icon,
+                IsUnlocked = a.IsUnlocked
+            })
+            .ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to load achievements: {ex.Message}");
+        }
     }
 
     public class AchievementDto

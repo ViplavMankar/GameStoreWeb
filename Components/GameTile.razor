@@ -2,11 +2,15 @@
 @inject IJSRuntime JS
 
 @using Microsoft.AspNetCore.Components.Authorization
+@using GameStoreWeb.Services
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 @using Microsoft.AspNetCore.Components.Web
-@inject IHttpClientFactory HttpClientFactory
+@* @inject IHttpClientFactory HttpClientFactory *@
+@inject ICollectionService CollectionService
+@inject IPricingService PricingService
 @using System.Net.Http.Headers
+@using System.Security.Claims
 
 @using GameStoreWeb.Models
 @using GameStoreWeb.Components
@@ -114,7 +118,7 @@
     [Parameter]
     public EventCallback<Guid> OnEditClicked { get; set; }
 
-    private string userId;
+    private Guid userId;
 
     // ownership / price state
     private bool IsOwned { get; set; } = false;
@@ -130,46 +134,47 @@
 
     private bool IsBusy { get; set; } = false;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        userId = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
-
-        if (firstRender)
+        @* userId = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value; *@
+        userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        @* if (firstRender)
+        { *@
+        if (!string.IsNullOrEmpty(userId.ToString()))
         {
-            if (!string.IsNullOrEmpty(userId))
-            {
-                var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
                 var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
                 if (!string.IsNullOrEmpty(token))
                 {
                     http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                }
+                } *@
 
-                var result = await http.GetFromJsonAsync<SavedResponse>($"/api/collections/exists/{Game.Id}");
+            @* var result = await http.GetFromJsonAsync<SavedResponse>($"/api/collections/exists/{Game.Id}"); *@
 
-                // fetch price (public endpoint, no auth required)
-                await Task.WhenAll(LoadOwnershipAsync(), LoadPriceAsync());
+            // fetch price (public endpoint, no auth required)
+            await Task.WhenAll(LoadOwnershipAsync(userId), LoadPriceAsync());
 
-                StateHasChanged();
-            }
+            StateHasChanged();
         }
+        @* } *@
     }
 
-    private async Task LoadOwnershipAsync()
+    private async Task LoadOwnershipAsync(Guid userId)
     {
         try
         {
-            var http = HttpClientFactory.CreateClient("GameStoreApiService");
-            var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
+            @* var http = HttpClientFactory.CreateClient("GameStoreApiService"); *@
+            @* var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
             if (!string.IsNullOrEmpty(token))
-                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token); *@
 
             // your existing endpoint
-            var result = await http.GetFromJsonAsync<SavedResponse>($"/api/collections/exists/{Game.Id}");
-            IsOwned = result?.isSaved ?? false;
+            @* var result = await http.GetFromJsonAsync<SavedResponse>($"/api/collections/exists/{Game.Id}"); *@
+            var result = await CollectionService.IsGameSavedAsync(userId, Game.Id);
+            IsOwned = result;
         }
         catch (Exception ex)
         {
@@ -182,9 +187,17 @@
     {
         try
         {
-            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            @* var http = HttpClientFactory.CreateClient("GameStoreApiService"); *@
             // public price endpoint typically doesn't need auth, but if it does you can set token as above
-            var priceResult = await http.GetFromJsonAsync<GetPriceResult>($"/api/games/{Game.Id}/price?currency=INR");
+            @* var priceResult = await http.GetFromJsonAsync<GetPriceResult>($"/api/games/{Game.Id}/price?currency=INR"); *@
+            GamePrice? price = await PricingService.GetActivePriceAsync(Game.Id, "INR");
+            GetPriceResult priceResult = new GetPriceResult
+            {
+                GameId = Game.Id,
+                Currency = price?.Currency ?? "INR",
+                IsPaid = price != null && price.PricePaise > 0,
+                PricePaise = price?.PricePaise ?? 0
+            };
 
             if (priceResult != null && priceResult.IsPaid)
             {
@@ -244,7 +257,7 @@
 
     private async Task AddToCollection()
     {
-        if (string.IsNullOrEmpty(userId))
+        if (userId == Guid.Empty)
         {
             NavManager.NavigateTo("/Account/Login?returnUrl=/marketplace");
             return;
@@ -253,23 +266,24 @@
         try
         {
             IsBusy = true;
-            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
             var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
             if (!string.IsNullOrEmpty(token))
                 http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var resp = await http.PostAsJsonAsync($"/api/collections/Add", new { userId, gameId = Game.Id });
             if (resp.IsSuccessStatusCode)
-            {
-                IsOwned = true;
-                // optional: navigate straight to My Collection so user can play
-                NavManager.NavigateTo("/myCollection");
-            }
+            { *@
+            await CollectionService.AddToCollectionAsync(userId, Game.Id);
+            IsOwned = true;
+            // optional: navigate straight to My Collection so user can play
+            NavManager.NavigateTo("/myCollection");
+            @* }
             else
-            {
-                var err = await resp.Content.ReadAsStringAsync();
-                Console.WriteLine($"AddToCollection failed: {resp.StatusCode} {err}");
-            }
+            { *@
+            @* var err = await resp.Content.ReadAsStringAsync();
+                Console.WriteLine($"AddToCollection failed: {resp.StatusCode} {err}"); *@
+            @* } *@
         }
         catch (Exception ex)
         {
@@ -293,7 +307,7 @@
 
     private async Task PlayGame()
     {
-        if (string.IsNullOrEmpty(userId))
+        if (userId == Guid.Empty)
         {
             NavManager.NavigateTo("/Account/Login?returnUrl=/myCollection");
             return;
@@ -304,7 +318,7 @@
             IsBusy = true;
 
             // Optional: tell server user started playing (analytics / play count / entitlement check)
-            try
+            @* try
             {
                 var http = HttpClientFactory.CreateClient("GameStoreApiService");
                 var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
@@ -312,13 +326,13 @@
                     http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 // Record play start (optional endpoint)
-                @* await http.PostAsJsonAsync($"/api/games/{Game.Id}/playstart", new { }); *@
+                 await http.PostAsJsonAsync($"/api/games/{Game.Id}/playstart", new { }); 
             }
             catch (Exception ex)
             {
                 // ignore analytics errors, but log them
                 Console.WriteLine($"Play tracking failed: {ex.Message}");
-            }
+            } *@
 
             // Open the game's URL in a new tab (so the marketplace remains open)
             @* await JS.InvokeVoidAsync("open", Game.GameUrl, "_blank"); *@

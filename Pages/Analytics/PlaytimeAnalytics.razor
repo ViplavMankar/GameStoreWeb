@@ -3,6 +3,9 @@
 @inject IHttpClientFactory HttpClientFactory
 @using Microsoft.JSInterop;
 @inject IJSRuntime JS
+@using GameStoreWeb.Services
+@using GameStoreWeb.DTOs
+@inject IStatisticsService StatisticsService
 
 <h2>Total Playtime Per Game</h2>
 
@@ -15,24 +18,17 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        List<GamePlaytimeDto> data;
         if (!firstRender) return;
 
-        var client = HttpClientFactory.CreateClient("GameStoreApiService");
+        @* var client = HttpClientFactory.CreateClient("GameStoreApiService"); *@
 
-        var data = await client.GetFromJsonAsync<List<GamePlaytimeDto>>(
-        "api/statistics/total-playtime");
-
+        @* var data = await client.GetFromJsonAsync<List<GamePlaytimeDto>>(
+        "api/statistics/total-playtime"); *@
+        data = await StatisticsService.GetTotalPlaytimePerGameAsync();
         var labels = data.Select(g => g.Title).ToArray();
         var minutes = data.Select(g => g.TotalMinutes).ToArray();
 
         await JS.InvokeVoidAsync("renderPlaytimeChart", labels, minutes);
     }
-
-    public class GamePlaytimeDto
-    {
-        public Guid GameId { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public double TotalMinutes { get; set; }
-    }
-
 }

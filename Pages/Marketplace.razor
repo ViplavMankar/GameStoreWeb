@@ -1,13 +1,19 @@
 @page "/marketplace"
 
-@inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
 @inject ILogger<Marketplace> Logger
+@inject IGameService GameService
+@inject ICollectionService CollectionService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@using GameStoreWeb.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web
 
-@using GameStoreWeb.Models
+@using GameStoreWeb.DTOs
+@* @using GameStoreWeb.Models *@
 @using GameStoreWeb.Components
+@using System.Security.Claims
 
 <AuthorizeView>
     <Authorized>
@@ -46,7 +52,17 @@
 
                     @foreach (var game in FilteredGames)
                     {
-                        <GameTile Game="game" IsInCollection="false" AllowEditing="allowEdit" OnEditClicked="EditGame" />
+                        Models.GameReadDto sendGame = new Models.GameReadDto
+                        {
+                            Id = game.Id,
+                            Title = game.Title,
+                            Description = game.Description,
+                            GameUrl = game.GameUrl,
+                            ThumbnailUrl = game.ThumbnailUrl,
+                            AuthorUserId = game.AuthorUserId,
+                            CreatedAt = game.CreatedAt
+                        };
+                        <GameTile Game="sendGame" IsInCollection="false" AllowEditing="allowEdit" OnEditClicked="EditGame" />
                     }
 
                 </div>
@@ -74,11 +90,24 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user?.Identity == null || !user.Identity.IsAuthenticated)
+        {
+            return; // UI will handle NotAuthorized
+        }
+
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+        {
+            return;
+        }
+
+        var userId = Guid.Parse(userIdClaim.Value);
         try
         {
-            var http = HttpClientFactory.CreateClient("GameStoreApiService");
-            games = await http.GetFromJsonAsync<List<GameReadDto>>("api/Games/GetAll");
-            savedGames = await http.GetFromJsonAsync<List<GameReadDto>>("api/collections/GetAll");
+            games = (await GameService.GetAllAsync()).ToList();
+            savedGames = (await CollectionService.GetUserCollectionAsync(userId)).ToList();
         }
         catch (Exception ex)
         {

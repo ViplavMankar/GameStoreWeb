@@ -1,5 +1,6 @@
 ﻿@page "/mygames"
 
+@using GameStoreWeb.Services
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
 
@@ -9,6 +10,9 @@
 @using System.Net.Http.Json
 @using System.Net.Http.Headers;
 @using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims;
+@inject AuthenticationStateProvider AuthStateProvider;
+@inject IGameService GameService;
 
 @inject NavigationManager Navigation
 
@@ -35,7 +39,17 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 @foreach (var game in games)
                 {
-                    <GameTile Game="game" IsInCollection="false" AllowEditing="allowEdit" OnEditClicked="EditGame" />
+                    Models.GameReadDto sendGame = new Models.GameReadDto
+                    {
+                        Id = game.Id,
+                        Title = game.Title,
+                        Description = game.Description,
+                        GameUrl = game.GameUrl,
+                        ThumbnailUrl = game.ThumbnailUrl,
+                        AuthorUserId = game.AuthorUserId,
+                        CreatedAt = game.CreatedAt
+                    };
+                    <GameTile Game="sendGame" IsInCollection="false" AllowEditing="allowEdit" OnEditClicked="EditGame" />
                 }
             </div>
         }
@@ -46,29 +60,45 @@
 </AuthorizeView>
 
 @code {
-    private List<GameReadDto>? games;
+    private IEnumerable<DTOs.GameReadDto>? games;
     private bool allowEdit = true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            var http = HttpClientFactory.CreateClient("GameStoreApiService");
+            @* var http = HttpClientFactory.CreateClient("GameStoreApiService");
             var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
 
             if (!string.IsNullOrEmpty(token))
             {
                 http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            } *@
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            if (!user.Identity.IsAuthenticated)
+            {
+                @* Navigation.NavigateTo("/login"); *@
+                return;
+            }
+
+            var userIdString = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                @* Navigation.NavigateTo("/login"); *@
+                return;
             }
             try
             {
-                games = await http.GetFromJsonAsync<List<GameReadDto>>("/api/games/Mine");
+                var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                @* games = await http.GetFromJsonAsync<List<GameReadDto>>("/api/games/Mine"); *@
+                games = await GameService.GetMyGamesAsync(userId);
                 StateHasChanged();
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"Failed to load games: {ex.Message}");
-                games = new List<GameReadDto>();
+                games = null;
             }
         }
     }

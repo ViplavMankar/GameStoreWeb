@@ -1,4 +1,38 @@
-﻿@page "/playground"
+﻿@using Microsoft.AspNetCore.Components.Web
+@page "/playground"
 
+<div class="container">
 
-<h3>Playground</h3>
+    <h3>HTML Editor</h3>
+
+    <textarea class="editor" @bind="HtmlContent" @bind:event="oninput">
+    </textarea>
+
+    <h3>Preview</h3>
+
+    <iframe class="preview" srcdoc="@HtmlContent">
+    </iframe>
+
+</div>
+
+<style>
+    .editor {
+        width: 100%;
+        height: 200px;
+        background: #111;
+        color: white;
+        padding: 10px;
+    }
+
+    .preview {
+        width: 100%;
+        height: 300px;
+        border: 1px solid gray;
+    }
+</style>
+
+@code {
+
+    string HtmlContent = "<h1>Hello GameStore</h1>";
+
+}
