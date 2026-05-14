@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using System.Text;
 using System.Xml.Linq;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 
 namespace GameStoreWeb.Controllers;
 
@@ -17,12 +18,17 @@ public class HomeController : Controller
     private readonly ILogger<HomeController> _logger;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IDashboardService _dashboardService;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public HomeController(ILogger<HomeController> logger, IHttpClientFactory httpClientFactory, IDashboardService dashboardService)
+    public HomeController(ILogger<HomeController> logger,
+                        IHttpClientFactory httpClientFactory,
+                        IDashboardService dashboardService,
+                        UserManager<ApplicationUser> userManager)
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _dashboardService = dashboardService;
+        _userManager = userManager;
     }
 
     public async Task<IActionResult> Index()
@@ -39,7 +45,7 @@ public class HomeController : Controller
             // {
             //     Console.WriteLine($"CLAIM TYPE: {claim.Type} | VALUE: {claim.Value}");
             // }
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            // var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             // if (string.IsNullOrEmpty(userIdClaim))
             // {
@@ -47,7 +53,15 @@ public class HomeController : Controller
             //     return RedirectToAction("Login", "Account");
             // }
 
-            var userId = Guid.Parse(userIdClaim);
+            // var userId = Guid.Parse(userIdClaim);
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var userId = Guid.Parse(user.Id);
             // AttachTokenToClient(client);
 
             var model = new DashboardViewModel();
@@ -59,16 +73,6 @@ public class HomeController : Controller
             model.MaxStreak = max;
 
             return View(model);
-            // var model = new DashboardViewModel();
-            // model.TotalXP = 0;
-            // model.CurrentStreak = 0;
-            // model.MaxStreak = 0;
-            // // var xp = await client.GetFromJsonAsync<XPViewModel>("api/dashboards/GetXP");
-            // // var streak = await client.GetFromJsonAsync<StreakViewModel>("api/dashboards/GetStreak");
-            // model.TotalXP = xp?.TotalXP ?? 0;
-            // model.CurrentStreak = streak?.CurrentStreak ?? 0;
-            // model.MaxStreak = streak?.MaxStreak ?? 0;
-            // return View(model);
         }
         catch
         {

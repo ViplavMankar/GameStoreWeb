@@ -1,6 +1,7 @@
 using System;
 using GameStoreWeb.Data;
 using GameStoreWeb.DTOs;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace GameStoreWeb.Services;
@@ -8,12 +9,14 @@ namespace GameStoreWeb.Services;
 public class ProfileService : IProfileService
 {
     private readonly IDbContextFactory<GameStoreDbContext> _contextFactory;
-    private readonly HttpClient _authClient;
+    // private readonly HttpClient _authClient;
+    private readonly UserManager<Models.ApplicationUser> _userManager;
 
-    public ProfileService(IDbContextFactory<GameStoreDbContext> contextFactory, IHttpClientFactory httpClientFactory)
+    public ProfileService(IDbContextFactory<GameStoreDbContext> contextFactory, UserManager<Models.ApplicationUser> userManager)
     {
         _contextFactory = contextFactory;
-        _authClient = httpClientFactory.CreateClient("AuthService");
+        // _authClient = httpClientFactory.CreateClient("AuthService");
+        _userManager = userManager;
     }
     public async Task<PlayerProfileDto> GetPlayerProfileAsync(Guid userId)
     {
@@ -70,12 +73,9 @@ public class ProfileService : IProfileService
         }
         try
         {
-            var response = await _authClient.GetAsync($"api/users/{userId.ToString()}");
-            if (!response.IsSuccessStatusCode)
-                return "Unknown";
-
-            var user = await response.Content.ReadFromJsonAsync<UserReadDto>();
-            return user?.Username ?? "Unknown";
+            // var response = await _authClient.GetAsync($"api/users/{userId.ToString()}");
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            return user?.UserName ?? "Unknown";
         }
         catch
         {
