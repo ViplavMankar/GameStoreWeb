@@ -1,6 +1,7 @@
 using System;
 using GameStoreWeb.Data;
 using GameStoreWeb.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace GameStoreWeb.Services;
@@ -9,16 +10,15 @@ public class LeaderboardBackgroundService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<LeaderboardBackgroundService> _logger;
-    private readonly HttpClient _authClient;
+    // private readonly HttpClient _authClient;
 
     public LeaderboardBackgroundService(
         IServiceScopeFactory scopeFactory,
-        ILogger<LeaderboardBackgroundService> logger,
-        IHttpClientFactory httpClientFactory)
+        ILogger<LeaderboardBackgroundService> logger)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
-        _authClient = httpClientFactory.CreateClient("AuthService");
+        // _authClient = httpClientFactory.CreateClient("AuthService");
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -94,21 +94,20 @@ public class LeaderboardBackgroundService : BackgroundService
         }
         try
         {
-            var response = await _authClient.GetAsync($"api/users/{userId.ToString()}");
-            if (!response.IsSuccessStatusCode)
-                return "Unknown";
+            // var response = await _authClient.GetAsync($"api/users/{userId.ToString()}");
+            using var scope = _scopeFactory.CreateScope();
 
-            var user = await response.Content.ReadFromJsonAsync<UserReadDto>();
-            return user?.Username ?? "Unknown";
+            var userManager =
+                scope.ServiceProvider
+                    .GetRequiredService<UserManager<ApplicationUser>>();
+
+            var user = await userManager.FindByIdAsync(userId.ToString());
+
+            return user?.UserName ?? "Unknown";
         }
         catch
         {
             return "Unknown";
         }
-    }
-    private class UserReadDto
-    {
-        public string Id { get; set; }
-        public string Username { get; set; } = string.Empty;
     }
 }

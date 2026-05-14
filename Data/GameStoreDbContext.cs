@@ -1,10 +1,11 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using GameStoreWeb.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace GameStoreWeb.Data;
 
-public class GameStoreDbContext : DbContext
+public class GameStoreDbContext : IdentityDbContext<ApplicationUser>
 {
     public GameStoreDbContext(DbContextOptions<GameStoreDbContext> options) : base(options) { }
 

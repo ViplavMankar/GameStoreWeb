@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Identity;
 using System.Text;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.IdentityModel.Tokens.Jwt;
@@ -13,6 +16,8 @@ using GameStoreWeb.Auth;
 using GameStoreWeb.Hubs;
 using GameStoreWeb.DTOs;
 using GameStoreWeb.Clients;
+using GameStoreWeb.Models;
+using GameStoreWeb.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +25,9 @@ QuestPDF.Settings.License = LicenseType.Community;
 
 var jwtKey = string.Empty;
 var gameStoreConnectionString = string.Empty;
+var configuration = builder.Configuration;
+var clientId = string.Empty;
+var clientSecret = string.Empty;
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
@@ -86,6 +94,8 @@ builder.Services.AddHttpClient<GeminiApiClient>((sp, http) =>
 
 if (builder.Environment.IsDevelopment())
 {
+    clientId = configuration["Authentication:Google:ClientId"];
+    clientSecret = configuration["Authentication:Google:ClientSecret"];
     gameStoreConnectionString = builder.Configuration.GetConnectionString("GameStoreString");
     if (string.IsNullOrEmpty(gameStoreConnectionString))
     {
@@ -99,6 +109,8 @@ if (builder.Environment.IsDevelopment())
 }
 else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
 {
+    clientId = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID");
+    clientSecret = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET");
     gameStoreConnectionString = Environment.GetEnvironmentVariable("GAME_STORE_CONNECTION_STRING");
     if (string.IsNullOrEmpty(gameStoreConnectionString))
     {
@@ -118,56 +130,89 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = "Cookies";
-    options.DefaultChallengeScheme = "Cookies";
-})
-.AddCookie("Cookies", options =>
-{
-    options.LoginPath = new PathString("/Account/Login");
-    // options.AccessDeniedPath = new PathString("/Account/AccessDenied");
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = false,
-        ValidateAudience = false,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtKey)) // <- pull from config!
-    };
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<GameStoreDbContext>()
+    .AddDefaultTokenProviders();
 
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            var path = context.HttpContext.Request.Path;
-
-            // ✅ ONLY apply this logic to YOUR custom hub
-            if (path.StartsWithSegments("/realtimehub"))
-            {
-                var token = context.HttpContext.Session.GetString("JWToken");
-                if (!string.IsNullOrEmpty(token))
-                    context.Token = token;
-            }
-
-            return Task.CompletedTask;
-        },
-        OnChallenge = context =>
-        {
-            context.Response.Redirect("/Account/Login");
-            context.HandleResponse(); // Prevents the default 401 response
-            return Task.CompletedTask;
-        }
-    };
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
 });
+builder.Services
+    .AddAuthentication()
+    .AddGoogle(options =>
+    {
+        options.ClientId = clientId;
+
+        options.ClientSecret = clientSecret;
+    });
+// builder.Services.AddAuthentication(options =>
+// {
+//     options.DefaultAuthenticateScheme =
+//         CookieAuthenticationDefaults.AuthenticationScheme;
+
+//     options.DefaultSignInScheme =
+//         CookieAuthenticationDefaults.AuthenticationScheme;
+
+//     options.DefaultChallengeScheme =
+//         CookieAuthenticationDefaults.AuthenticationScheme;
+// })
+// .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+// {
+//     options.LoginPath = "/Account/Login";
+// })
+// .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+// {
+//     options.TokenValidationParameters =
+//         new TokenValidationParameters
+//         {
+//             ValidateIssuer = false,
+//             ValidateAudience = false,
+//             ValidateLifetime = true,
+//             ValidateIssuerSigningKey = true,
+//             IssuerSigningKey =
+//                 new SymmetricSecurityKey(
+//                     Encoding.UTF8.GetBytes(jwtKey))
+//         };
+
+//     options.Events = new JwtBearerEvents
+//     {
+//         OnMessageReceived = context =>
+//         {
+//             var path = context.HttpContext.Request.Path;
+
+//             if (path.StartsWithSegments("/realtimehub"))
+//             {
+//                 var token =
+//                     context.HttpContext.Session.GetString("JWToken");
+
+//                 if (!string.IsNullOrEmpty(token))
+//                     context.Token = token;
+//             }
+
+//             return Task.CompletedTask;
+//         }
+//     };
+// })
+// .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
+// {
+//     options.ClientId =
+//         builder.Configuration["Authentication:Google:ClientId"];
+
+//     options.ClientSecret =
+//         builder.Configuration["Authentication:Google:ClientSecret"];
+
+//     options.CallbackPath = "/signin-google";
+// });
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddDbContextFactory<GameStoreDbContext>(options => options.UseNpgsql(gameStoreConnectionString));
+builder.Services.AddDbContext<GameStoreDbContext>(options =>
+    options.UseNpgsql(gameStoreConnectionString));
+
+builder.Services.AddDbContextFactory<GameStoreDbContext>(options =>
+    options.UseNpgsql(gameStoreConnectionString),
+    ServiceLifetime.Scoped);
 
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
@@ -186,13 +231,14 @@ builder.Services.AddScoped<IGameSessionService, GameSessionService>();
 builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.AddScoped<IAiRewriteService, AiRewriteService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 
 builder.Services.AddHostedService<LeaderboardBackgroundService>();
 builder.Services.AddHostedService<DailyChallengeGeneratorService>();
 
 builder.Services.AddHttpContextAccessor(); // Needed to access session inside the provider
-builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
+// builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -263,26 +309,9 @@ app.UseStaticFiles();
 
 app.UseRouting();
 app.UseSession();
-
+app.UseMiddleware<TokenLoggingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.Use(async (context, next) =>
-{
-    var token = context.Session.GetString("JWToken");
-    // Console.WriteLine($"Middleware checking for token: {token}");
-
-    if (!string.IsNullOrWhiteSpace(token))
-    {
-        var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(token);
-
-        var identity = new ClaimsIdentity(jwt.Claims, "jwt");
-        context.User = new ClaimsPrincipal(identity);
-    }
-
-    await next();
-});
 
 app.MapControllers();
 app.MapControllerRoute(

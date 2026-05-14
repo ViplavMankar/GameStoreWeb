@@ -1,6 +1,7 @@
 using System;
 using GameStoreWeb.Data;
 using GameStoreWeb.DTOs;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace GameStoreWeb.Services;
@@ -8,11 +9,13 @@ namespace GameStoreWeb.Services;
 public class LeaderboardService : ILeaderboardService
 {
     private readonly IDbContextFactory<GameStoreDbContext> _contextFactory;
-    private readonly HttpClient _authClient;
-    public LeaderboardService(IDbContextFactory<GameStoreDbContext> contextFactory, IHttpClientFactory httpClientFactory)
+    // private readonly HttpClient _authClient;
+    private readonly UserManager<Models.ApplicationUser> _userManager;
+    public LeaderboardService(IDbContextFactory<GameStoreDbContext> contextFactory, UserManager<Models.ApplicationUser> userManager)
     {
         _contextFactory = contextFactory;
-        _authClient = httpClientFactory.CreateClient("AuthService");
+        // _authClient = httpClientFactory.CreateClient("AuthService");
+        _userManager = userManager;
     }
     public async Task<List<LeaderboardDto>> GetPlaytimeLeaderboardAsync()
     {
@@ -71,12 +74,9 @@ public class LeaderboardService : ILeaderboardService
         }
         try
         {
-            var response = await _authClient.GetAsync($"api/users/{userId.ToString()}");
-            if (!response.IsSuccessStatusCode)
-                return "Unknown";
-
-            var user = await response.Content.ReadFromJsonAsync<UserReadDto>();
-            return user?.Username ?? "Unknown";
+            // var response = await _authClient.GetAsync($"api/users/{userId.ToString()}");
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            return user?.UserName ?? "Unknown";
         }
         catch
         {
