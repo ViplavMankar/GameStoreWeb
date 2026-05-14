@@ -129,6 +129,8 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
+Console.WriteLine($"ClientId: {clientId}");
+Console.WriteLine($"ClientSecret Exists: {!string.IsNullOrEmpty(clientSecret)}");
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<GameStoreDbContext>()
@@ -143,8 +145,8 @@ builder.Services
     .AddGoogle(options =>
     {
         options.ClientId = clientId;
-
         options.ClientSecret = clientSecret;
+        options.CallbackPath = "/signin-google";
     });
 // builder.Services.AddAuthentication(options =>
 // {
