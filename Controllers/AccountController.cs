@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using GameStoreWeb.Services;
 
 namespace GameStoreWeb.Controllers
 {
@@ -13,16 +14,19 @@ namespace GameStoreWeb.Controllers
         private readonly IConfiguration _configuration;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IJwtTokenService _jwtTokenService;
 
         public AccountController(IHttpClientFactory httpClientFactory,
                                 IConfiguration configuration,
                                 UserManager<ApplicationUser> userManager,
-                                SignInManager<ApplicationUser> signInManager)
+                                SignInManager<ApplicationUser> signInManager,
+                                IJwtTokenService jwtTokenService)
         {
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
             _userManager = userManager;
             _signInManager = signInManager;
+            _jwtTokenService = jwtTokenService;
         }
 
         [HttpGet]
@@ -44,7 +48,14 @@ namespace GameStoreWeb.Controllers
         {
             if (!ModelState.IsValid)
             {
-                Console.WriteLine("MODEL INVALID");
+                return View(model);
+            }
+
+            var user = await _userManager.FindByNameAsync(model.Username);
+
+            if (user == null)
+            {
+                ModelState.AddModelError("", "Invalid login.");
                 return View(model);
             }
 
@@ -56,10 +67,23 @@ namespace GameStoreWeb.Controllers
 
             if (!result.Succeeded)
             {
-                return Content("LOGIN FAILED");
+                ModelState.AddModelError("", "Invalid login.");
+                return View(model);
             }
 
-            Console.WriteLine("LOGIN SUCCESS");
+            // Generate JWT for SignalR
+            var token = await _jwtTokenService.CreateToken(user);
+
+            // Store token
+            HttpContext.Session.SetString("JWToken", token);
+
+            Response.Cookies.Append("JWToken", token, new CookieOptions
+            {
+                HttpOnly = false,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(15)
+            });
 
             return RedirectToAction("Index", "Home");
 
@@ -187,6 +211,19 @@ namespace GameStoreWeb.Controllers
 
             // Sign in using Identity
             await _signInManager.SignInAsync(user, isPersistent: false);
+
+            var token = await _jwtTokenService.CreateToken(user);
+
+            // Store token
+            HttpContext.Session.SetString("JWToken", token);
+
+            Response.Cookies.Append("JWToken", token, new CookieOptions
+            {
+                HttpOnly = false,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(15)
+            });
 
             return RedirectToAction("Index", "Home");
         }

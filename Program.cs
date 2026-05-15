@@ -129,9 +129,6 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
-Console.WriteLine($"ClientId: {clientId}");
-Console.WriteLine($"ClientSecret Exists: {!string.IsNullOrEmpty(clientSecret)}");
-
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<GameStoreDbContext>()
     .AddDefaultTokenProviders();
@@ -147,6 +144,44 @@ builder.Services
         options.ClientId = clientId;
         options.ClientSecret = clientSecret;
         options.CallbackPath = "/signin-google";
+    })
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+    {
+        options.TokenValidationParameters =
+            new TokenValidationParameters
+            {
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey =
+                    new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtKey))
+            };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // var accessToken =
+                // context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (path.StartsWithSegments("/realtimehub"))
+                {
+                    var accessToken =
+                        context.HttpContext.Session.GetString("JWToken");
+
+                    if (!string.IsNullOrEmpty(accessToken))
+                    {
+                        context.Token = accessToken;
+                        // Console.WriteLine($"Token detected: {context.Token}");
+                    }
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 // builder.Services.AddAuthentication(options =>
 // {
@@ -235,9 +270,10 @@ builder.Services.AddScoped<IAiRewriteService, AiRewriteService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
-
 builder.Services.AddHostedService<LeaderboardBackgroundService>();
 builder.Services.AddHostedService<DailyChallengeGeneratorService>();
+
+builder.Services.AddSignalR();
 
 builder.Services.AddHttpContextAccessor(); // Needed to access session inside the provider
 // builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
@@ -296,8 +332,6 @@ else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
 
 var app = builder.Build();
 
-app.MapHub<RealtimeHub>("/realtimehub");
-
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -311,7 +345,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 app.UseSession();
-app.UseMiddleware<TokenLoggingMiddleware>();
+// app.UseMiddleware<TokenLoggingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -321,6 +355,7 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapBlazorHub();
+app.MapHub<RealtimeHub>("/realtimehub");
 
 await app.MigrateDbAsync();
 

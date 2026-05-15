@@ -102,5 +102,6 @@ public class ChallengeService : IChallengeService
                     stats.TotalXP += challenge.XPReward;
             }
         }
+        await _db.SaveChangesAsync();
     }
 }
