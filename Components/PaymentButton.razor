@@ -1,10 +1,17 @@
-﻿@inject HttpClient Http
+﻿@inject IHttpClientFactory HttpClientFactory
+@using Amazon.Runtime
+@using GameStoreWeb.DTOs
 @using Microsoft.JSInterop;
 @inject IJSRuntime JS
 @using System.Text.Json;
 @using Microsoft.AspNetCore.Components.Web
-@inject IHttpClientFactory HttpClientFactory
+@using Microsoft.AspNetCore.Components.Authorization;
+@using System.Security.Claims;
 @using GameStoreWeb.Models
+@using GameStoreWeb.Services
+@inject IPaymentApplicationService PaymentAppService
+@inject ICollectionService CollectionService
+@inject AuthenticationStateProvider AuthStateProvider;
 
 <button class="btn btn-primary" @onclick="StartPayment" disabled="@IsBusy">
     @(IsBusy ? "Processing..." : $"Buy ₹{Amount:F2}")
@@ -19,6 +26,7 @@
 
     private DotNetObjectReference<PaymentButton>? _objRef;
     private bool IsBusy;
+    private PaymentOrderResponse? data = null;
 
     protected override void OnInitialized() => _objRef = DotNetObjectReference.Create(this);
     public void Dispose() => _objRef?.Dispose();
@@ -30,19 +38,12 @@
         try
         {
             // 1) Create order on backend (server computes price from GameId)
-            var http = HttpClientFactory.CreateClient("PaymentApiService");
+            @* var http = HttpClientFactory.CreateClient("PaymentApiService"); *@
 
-            var createReq = new { amount = Amount, currency = Currency }; // no amount from client
-            var resp = await http.PostAsJsonAsync("/api/BankPayment/process", createReq);
-            if (!resp.IsSuccessStatusCode)
-            {
-                var txt = await resp.Content.ReadAsStringAsync();
-                Console.Error.WriteLine($"Create order failed: {txt}");
-                await NotifyCompleted(false, "create-failed");
-                return;
-            }
+            @* var createReq = new { amount = Amount, currency = Currency }; // no amount from client
+            var resp = await http.PostAsJsonAsync("/api/BankPayment/process", createReq); *@
+            data = await PaymentAppService.CreateOrderAsync(Amount, Currency);
 
-            var data = await resp.Content.ReadFromJsonAsync<CreateOrderResponse>();
             if (data is null)
             {
                 Console.Error.WriteLine("Empty response creating order");
@@ -53,12 +54,12 @@
             // 2) Open Razorpay Checkout
             var options = new
             {
-                key = data.key, // publishable
-                amount = data.amount, // in paise
-                currency = data.currency,
+                key = data.Key, // publishable
+                amount = data.Amount, // in paise
+                currency = data.Currency,
                 name = "GameStore",
                 description = "Purchase",
-                order_id = data.orderId,
+                order_id = data.OrderId,
                 // You can pass notes/receipt/internal order id to help correlate
                 @* notes = new { gameId = GameId.ToString(), internalOrderId = data.internalOrderId } *@
             };
@@ -82,12 +83,12 @@
     {
         try
         {
+            var http = HttpClientFactory.CreateClient("LocalAPIClient");
             var paymentId = response.GetProperty("razorpay_payment_id").GetString();
             var orderId = response.GetProperty("razorpay_order_id").GetString();
             var signature = response.GetProperty("razorpay_signature").GetString();
 
             // 3) Verify on server (authoritative)
-            var http = HttpClientFactory.CreateClient("PaymentApiService");
             var verifyPayload = new
             {
                 razorpay_payment_id = paymentId,
@@ -103,12 +104,28 @@
                 return;
             }
 
-            // 4) Add to collection (only after verification succeeds)
-            var addResp = await http.PostAsJsonAsync("/api/collections/Add", new { gameId = GameId });
-            if (!addResp.IsSuccessStatusCode)
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            if (!user.Identity.IsAuthenticated)
             {
-                var txt = await addResp.Content.ReadAsStringAsync();
-                Console.Error.WriteLine("AddToCollection failed: " + txt);
+                @* Navigation.NavigateTo("/login"); *@
+                return;
+            }
+
+            var userIdString = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                @* Navigation.NavigateTo("/login"); *@
+                return;
+            }
+            var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            // 4) Add to collection (only after verification succeeds)
+            @* var addResp = await http.PostAsJsonAsync("/api/collections/Add", new { gameId = GameId }); *@
+            var addResp = await CollectionService.AddToCollectionAsync(userId, GameId);
+            if (!addResp)
+            {
+                Console.Error.WriteLine("AddToCollection failed: ");
                 // still consider payment success, but surface collection issue
                 await NotifyCompleted(true, "payment-verified-collection-failed");
                 return;
