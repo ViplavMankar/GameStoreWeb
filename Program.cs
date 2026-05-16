@@ -18,6 +18,7 @@ using GameStoreWeb.DTOs;
 using GameStoreWeb.Clients;
 using GameStoreWeb.Models;
 using GameStoreWeb.Middlewares;
+using GameStoreWeb.Payments;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -269,6 +270,9 @@ builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.AddScoped<IAiRewriteService, AiRewriteService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IRazorpayPaymentService, RazorpayPaymentService>();
+builder.Services.AddScoped<IPaymentApplicationService, PaymentApplicationService>();
+builder.Services.AddScoped<IPaymentRepository, EfPaymentRepository>();
 
 builder.Services.AddHostedService<LeaderboardBackgroundService>();
 builder.Services.AddHostedService<DailyChallengeGeneratorService>();
@@ -304,6 +308,14 @@ if (builder.Environment.IsDevelopment())
     {
         ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
     });
+    builder.Services.AddHttpClient("LocalAPIClient", client =>
+    {
+        client.BaseAddress = new Uri("https://localhost:7051/");
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+    });
 }
 else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
 {
@@ -324,6 +336,12 @@ else if (Environment.GetEnvironmentVariable("RENDER") != null) // Only on Render
     {
         client.BaseAddress = Environment.GetEnvironmentVariable("PAYMENT_API_URL") != null
             ? new Uri(Environment.GetEnvironmentVariable("PAYMENT_API_URL"))
+            : throw new Exception("Environment variable not set.");
+    });
+    builder.Services.AddHttpClient("LocalAPIClient", client =>
+    {
+        client.BaseAddress = Environment.GetEnvironmentVariable("LOCAL_API_URL") != null
+            ? new Uri(Environment.GetEnvironmentVariable("LOCAL_API_URL"))
             : throw new Exception("Environment variable not set.");
     });
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";

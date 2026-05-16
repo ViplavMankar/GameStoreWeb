@@ -232,7 +232,7 @@
                 options.AccessTokenProvider = async () =>
     {
                 var token = await JS.InvokeAsync<string>("getCookie", "JWToken");
-                Console.WriteLine($"JWT TOKEN: {token}");
+                @* Console.WriteLine($"JWT TOKEN: {token}"); *@
                 return token;
             };
                 options.HttpMessageHandlerFactory = (handler) =>

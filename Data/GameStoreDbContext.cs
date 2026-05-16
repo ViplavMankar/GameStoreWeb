@@ -22,6 +22,8 @@ public class GameStoreDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<DailyChallenge> DailyChallenges { get; set; }
     public DbSet<UserDailyChallengeProgress> UserDailyChallengeProgresses { get; set; }
     public DbSet<UserStreak> UserStreaks { get; set; }
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -200,6 +202,21 @@ public class GameStoreDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<UserStreak>(entity =>
         {
             entity.HasKey(s => s.UserId);
+        });
+
+        modelBuilder.Entity<Order>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.OrderId).IsUnique();          // idempotency key
+            // e.Property(x => x.RowVersion).IsRowVersion();    // optimistic concurrency
+        });
+
+        modelBuilder.Entity<Payment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.PaymentId).IsUnique();         // idempotency key
+            e.HasIndex(x => x.OrderId);                      // query by Razorpay order id
+            // e.Property(x => x.RowVersion).IsRowVersion();
         });
     }
 }
